@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(executables
+ ((names (main))
+    (libraries (core))
+    (preprocess (pps (ppx_let)))))
