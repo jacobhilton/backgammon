@@ -1,7 +1,7 @@
 open Core
 
 let main () =
-  printf "%s\n" Game.Board.(to_ascii starting);
+  printf "%s\n" (Game.Board.to_ascii ~viewer:Game.Player.Forwards ~home:`right Game.Board.starting);
   ()
 
 let () =

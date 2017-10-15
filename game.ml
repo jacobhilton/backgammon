@@ -5,6 +5,10 @@ module Player = struct
     | Forwards
     | Backwards
 
+  let flip = function
+    | Forwards -> Backwards
+    | Backwards -> Forwards
+
   let to_char = function
     | Forwards -> 'O'
     | Backwards -> 'X'
@@ -84,8 +88,8 @@ module Board = struct
     }
 
   let starting =
-    { bar = Per_player.create_both 0
-    ; off = Per_player.create_both 0
+    { bar = Per_player.create_both 1
+    ; off = Per_player.create_both 1
     ; points = begin
         let open Point in
         [ forwards 2; empty; empty; empty; empty; backwards 5
@@ -97,7 +101,7 @@ module Board = struct
     ; to_play = None
     }
 
-  let to_ascii { bar; points; off; to_play } =
+  let to_ascii ?(viewer=Player.Backwards) ?(home=`left) { bar; points; off; to_play } =
     let to_play_text =
       match to_play with
       | None -> "Start of play."
@@ -113,7 +117,7 @@ module Board = struct
       List.map points ~f:(fun point ->
         List.init 10 ~f:(fun i ->
           match i with
-          | 0 -> "  ^  "
+          | 0 -> "  v  "
           | 1 -> String.make 5 ' '
           | _ ->
             match Point.player point with
@@ -136,7 +140,6 @@ module Board = struct
       List.init 10 ~f:(fun i ->
         let from_middle =
           if Int.(i >= 5) then 2 * (i - 5) + 1 else 2 * (5 - i)
-          (* if Int.(i >= 5) then 2 * (i - 4) else 2 * (4 - i) + 1 *)
         in
         let number = Per_player.get bar player in
         let player_char = Player.to_char player in
@@ -152,105 +155,55 @@ module Board = struct
           | 0 | 4 -> '|'
           | _ -> ' '))
     in
-    let bottom, top = List.split_n points_ascii 12 in
-    let bottom_left, bottom_right = List.split_n (List.map bottom ~f:List.rev) 6 in
-    let top_left, top_right = List.split_n (List.rev top) 6 in
-    let bottom_with_bar =
-      bottom_left @ [List.rev (bar_ascii Player.Forwards)] @ bottom_right
+    let backwards_points, forwards_points = List.split_n points_ascii 12 in
+    let backwards_home, backwards_outer = List.split_n backwards_points 6 in
+    let forwards_outer, forwards_home = List.split_n forwards_points 6 in
+    let backwards_board = backwards_home @ [bar_ascii Player.Forwards] @ backwards_outer in
+    let forwards_board = forwards_outer @ [bar_ascii Player.Backwards] @ forwards_home in
+    let top_board, bottom_board =
+      match viewer with
+      | Player.Backwards -> forwards_board, backwards_board
+      | Forwards -> backwards_board, forwards_board
     in
-    let top_with_bar =
-      top_left @ [bar_ascii Player.Backwards] @ top_right
-      |> List.map ~f:(List.map ~f:(String.tr ~target:'^' ~replacement:'v')) 
+    let top_order, bottom_order =
+      match home with
+      | `left -> List.rev, Fn.id
+      | `right -> Fn.id, List.rev
+    in
+    let flip half =
+      List.map half ~f:(fun l ->
+        List.map l ~f:(String.tr ~target:'v' ~replacement:'^')
+        |> List.rev)
     in
     let transpose_and_add_border half =
       Option.value_exn (List.transpose half)
       |> List.map ~f:(fun l -> "|" ^ String.concat l ~sep:"" ^ "|")
     in
-    let numbers_ascii l =
-      List.map l ~f:(fun i ->
-        (if Int.(i < 10) then "  " else " ") ^ Int.to_string i ^ "  ")
-      |> String.concat ~sep:""
+    let numbers_ascii quarter =
+      List.init 6 ~f:(fun i ->
+        let number = (quarter - 1) * 6 + i + 1 in
+        (if Int.(number < 10) then "  " else " ") ^ Int.to_string number ^ "  ")
+    in
+    let backwards_numbers = numbers_ascii 1 @ [String.make 5 ' '] @ numbers_ascii 2 in
+    let forwards_numbers = numbers_ascii 3 @ [String.make 5 ' '] @ numbers_ascii 4 in
+    let top_numbers, bottom_numbers =
+      match viewer with
+      | Player.Backwards -> forwards_numbers, backwards_numbers
+      | Forwards -> backwards_numbers, forwards_numbers
     in
     [ to_play_text
     ; off_text Player.Forwards
-    ; " " ^ numbers_ascii [24; 23; 22; 21; 20; 19] ^ "     "
-      ^ numbers_ascii [18; 17; 16; 15; 14; 13] ^ " "
+    ; " " ^ String.concat ~sep:"" (top_order top_numbers) ^ " "
     ; "-" ^ String.make 65 '-' ^ "-"
     ]
-    @ transpose_and_add_border top_with_bar @
+    @ transpose_and_add_border (top_order top_board) @
     [ "|" ^ String.make 30 '-' ^ "|   |" ^ String.make 30 '-' ^ "|" ]
-    @ transpose_and_add_border bottom_with_bar @
+    @ transpose_and_add_border (flip (bottom_order bottom_board)) @
     [ "-" ^ String.make 65 '-' ^ "-"
-    ; " " ^ numbers_ascii [1; 2; 3; 4; 5; 6] ^ "     "
-      ^ numbers_ascii [7; 8; 9; 10; 11; 12] ^ " "
+    ; " " ^ String.concat ~sep:"" (bottom_order bottom_numbers) ^ " "
     ; off_text Player.Backwards
     ]
     |> String.concat ~sep:"\n"
-
-  let to_ascii_old { bar = _; points; off = _; to_play = _} =
-    let labelled_points = List.mapi points ~f:(fun i p -> (i + 1, p)) in
-    let first_half, second_half = List.split_n labelled_points 12 in
-    let top_half, bottom_half =
-      List.split_n (List.zip_exn first_half (List.rev second_half)) 6
-    in
-    let ascii_of_half half =
-      let ascii_of_label label =
-        Core_extended.Printc.lpad ~fill:' ' 2 (Int.to_string label)
-      in
-      let ascii_of_point point left_or_right =
-        let char =
-          Option.map (Point.player point) ~f:Player.to_char
-          |> Option.value ~default:' '
-        in
-        let pad =
-          let open Core_extended.Printc in
-          match left_or_right with
-          | `left -> rpad
-          | `right -> lpad
-        in
-        let without_triangle =
-          String.make (Point.number point) char
-          |> pad ~fill:' ' 8
-        in
-        match left_or_right with
-        | `left -> "> " ^ without_triangle
-        | `right -> without_triangle ^ " <"
-      in
-      List.map half ~f:(fun ((left_label, left_point), (right_label, right_point)) ->
-        [ [ String.make 13 ' '; String.make 13 ' ' ]
-        ; [ String.make 13 ' '; String.make 13 ' ' ]
-        ; [ String.make 13 ' '; String.make 13 ' ' ]
-        ; [ String.make 13 ' '; String.make 13 ' ' ]
-        ; [ ascii_of_label left_label ^ " " ^ ascii_of_point left_point `left
-          ; ascii_of_point right_point `right ^ " " ^ ascii_of_label right_label
-          ]
-        ]
-      )
-      |> List.concat
-      |> List.tl_exn
-      |> List.map ~f:(String.concat ~sep:" | ")
-      |> List.map ~f:(fun s -> "| " ^ s ^ " |")
-    in
-    [ String.make 33 '-' ]
-    @ ascii_of_half top_half
-    @ [ String.make 33 '-'; "|" ^ String.make 31 ' ' ^ "|"; "|" ^ String.make 31 ' ' ^ "|"; "|" ^ String.make 31 ' ' ^ "|"; String.make 33 '-' ]
-    @ ascii_of_half bottom_half
-    @ [ String.make 33 '-' ]
-
-  let rotate ascii =
-    List.map ascii ~f:(fun s -> String.to_list_rev s |> List.rev)
-    |> List.map ~f:Array.of_list
-    |> Array.of_list
-    |> Array.transpose_exn
-    |> Array.to_list
-    |> List.map ~f:Array.to_list
-    |> List.rev
-    |> List.map ~f:String.of_char_list
-    |> List.map ~f:(String.tr ~target:'|' ~replacement:'!')
-    |> List.map ~f:(String.tr ~target:'-' ~replacement:'|')
-    |> List.map ~f:(String.tr ~target:'!' ~replacement:'-')
-    |> List.map ~f:(String.tr ~target:'>' ~replacement:'^')
-    |> List.map ~f:(String.tr ~target:'<' ~replacement:'v')
 end
 
 module Dice = struct
