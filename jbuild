@@ -2,5 +2,5 @@
 
 (executables
  ((names (main))
-    (libraries (core))
+    (libraries (core core_extended))
     (preprocess (pps (ppx_let)))))
