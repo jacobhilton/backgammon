@@ -7,5 +7,5 @@ type t =
 
 let apply_legally t player board =
   match t.from, Board.bar board player with
-  | `Bar, 0 -> Or_error.error_string "No counters on the bar"
+  | `Bar, 0 -> Or_error.errorf "No counters of player %c on the bar" (Player.char player)
   | _ -> failwith "hi"

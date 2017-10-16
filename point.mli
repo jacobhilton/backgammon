@@ -4,7 +4,7 @@ val create : Player.t -> int -> t
 
 val empty : t
 
-val player : t -> Player.t option
+val occupier : t -> Player.t option
 
 val number : t -> int
 

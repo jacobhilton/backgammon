@@ -13,7 +13,7 @@ let off t player = Per_player.get t.off player
 let point_exn t pos = List.nth_exn t.points (pos - 1)
 
 let replace_point t pos ~f =
-  { t with points = List.mapi t.points ~f:(fun i p -> if Int.equal (pos - 1) i then f p else p) }
+  { t with points = List.mapi t.points ~f:(fun i p -> if Int.equal i (pos - 1) then f p else p) }
 
 let remove_from_bar_exn t player =
   match bar t player with
@@ -61,7 +61,7 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
         | 0 -> "  v  "
         | 1 -> String.make 5 ' '
         | _ ->
-          match Point.player point with
+          match Point.occupier point with
           | None -> String.make 5 ' '
           | Some player ->
             let height = i - 1 in
