@@ -117,8 +117,8 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
   in
   let top_order, bottom_order =
     match viewer, home with
-    | _, None | Player.Backwards, Some `left | Forwards, Some `right -> List.rev, Fn.id
-    | Backwards, Some `right | Forwards, Some `left -> Fn.id, List.rev
+    | _, None | Player.Backwards, Some `Left | Forwards, Some `Right -> List.rev, Fn.id
+    | Backwards, Some `Right | Forwards, Some `Left -> Fn.id, List.rev
   in
   let flip half =
     List.map half ~f:(fun l ->
@@ -134,22 +134,22 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
       let position = (quarter - 1) * 6 + i + 1 in
       (if Int.(position < 10) then "  " else " ") ^ Int.to_string position ^ "  ")
   in
-  let top_positions = positions_ascii 3 @ [String.make 5 ' '] @ positions_ascii 4 |> List.rev in
+  let top_positions = positions_ascii 3 @ [String.make 5 ' '] @ positions_ascii 4 in
   let bottom_positions = positions_ascii 1 @ [String.make 5 ' '] @ positions_ascii 2 in
-  let positions_order =
+  let top_positions_order, bottom_positions_order =
     match viewer, home with
-    | _, Some `left | Player.Backwards, None -> Fn.id
-    | _, Some `right | Player.Forwards, None -> List.rev
+    | _, Some `Left | Player.Backwards, None -> List.rev, Fn.id
+    | _, Some `Right | Player.Forwards, None -> Fn.id, List.rev
   in
   [ off_text (Player.flip viewer)
-  ; " " ^ String.concat ~sep:"" (positions_order top_positions) ^ " "
+  ; " " ^ String.concat ~sep:"" (top_positions_order top_positions) ^ " "
   ; "-" ^ String.make 65 '-' ^ "-"
   ]
   @ transpose_and_add_border (top_order top_board) @
   [ "|" ^ String.make 30 '-' ^ "|   |" ^ String.make 30 '-' ^ "|" ]
   @ transpose_and_add_border (flip (bottom_order bottom_board)) @
   [ "-" ^ String.make 65 '-' ^ "-"
-  ; " " ^ String.concat ~sep:"" (positions_order bottom_positions) ^ " "
+  ; " " ^ String.concat ~sep:"" (bottom_positions_order bottom_positions) ^ " "
   ; off_text viewer
   ]
   |> String.concat ~sep:"\n"

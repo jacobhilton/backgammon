@@ -18,4 +18,4 @@ val add_to_point_exn : t -> Player.t -> position:int -> t
 
 val starting : t
 
-val to_ascii : ?viewer:Player.t -> ?home:[`left | `right] -> t -> string
+val to_ascii : ?viewer:Player.t -> ?home:[ `Left | `Right ] -> t -> string

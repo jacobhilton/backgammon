@@ -2,7 +2,7 @@ open Core
 
 let main () =
   printf "%s\n" Board.(to_ascii starting);
-  let _ = Movement.apply_legally in
+  let _ = Move.apply_legally in
   List.iter Roll.all_with_probabilities ~f:(fun (roll, _) ->
     match roll with
     | Roll.Double i -> printf "(%i %i %i %i)\n" i i i i
