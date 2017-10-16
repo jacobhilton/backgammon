@@ -1,11 +1,9 @@
-type t
+type t =
+  | Double of int
+  | High_low of int * int
 
 val self_init : unit -> unit
 
 val generate : unit -> t
 
-val generate_starting : unit -> Player.t * t
-
-val distances : t -> int list
-
-val all_distances_with_probabilities : (int list * float) list
+val all_with_probabilities : (t * float) list

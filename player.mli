@@ -2,6 +2,8 @@ type t =
   | Forwards
   | Backwards
 
+val equal : t -> t -> bool
+
 val flip : t -> t
 
-val to_char : t -> char
+val char : t -> char

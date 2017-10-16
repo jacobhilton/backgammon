@@ -10,10 +10,6 @@ let create player number =
   | Player.Forwards -> n
   | Backwards -> -n
 
-let forwards number = create Player.Forwards number
-
-let backwards number = create Player.Backwards number
-
 let player t =
   match Int.sign t with
   | Sign.Neg -> Some Player.Backwards
@@ -21,3 +17,16 @@ let player t =
   | Pos -> Some Player.Forwards
 
 let number t = Int.abs t
+
+let remove_exn t occupier =
+  match Option.map (player t) ~f:(Player.equal occupier) with
+  | None | Some false ->
+    failwithf "No counters of player %c on point to remove" (Player.char occupier) ()
+  | Some true -> t - create occupier 1
+
+let add_exn t occupier =
+  match Option.map (player t) ~f:(Player.equal occupier) with
+  | Some false ->
+    failwithf "Counters of player %c prevent addition of counters of player %c"
+      (Player.char (Player.flip occupier)) (Player.char occupier) ()
+  | None | Some true -> t + create occupier 1

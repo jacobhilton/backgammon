@@ -2,33 +2,54 @@ open Core
 
 type t =
   { bar : int Per_player.t
-  ; points : Point.t list
   ; off : int Per_player.t
-  ; to_play : Player.t option
+  ; points : Point.t list
   }
+
+let bar t player = Per_player.get t.bar player
+
+let off t player = Per_player.get t.off player
+
+let point_exn t pos = List.nth_exn t.points (pos - 1)
+
+let replace_point t pos ~f =
+  { t with points = List.mapi t.points ~f:(fun i p -> if Int.equal (pos - 1) i then f p else p) }
+
+let remove_from_bar_exn t player =
+  match bar t player with
+  | 0 -> failwithf "No counters of player %c on the bar to remove" (Player.char player) ()
+  | number -> { t with bar = Per_player.replace t.bar player (number - 1) }
+
+let add_to_bar t player =
+  { t with bar = Per_player.replace t.bar player (bar t player + 1) }
+
+let add_to_off t player =
+  { t with off = Per_player.replace t.off player (off t player + 1) }
+
+let remove_from_point_exn t pos player =
+  replace_point t pos ~f:(fun point -> Point.remove_exn point player)
+
+let add_to_point_exn t pos player =
+  replace_point t pos ~f:(fun point -> Point.add_exn point player)
 
 let starting =
   { bar = Per_player.create_both 0
   ; off = Per_player.create_both 0
   ; points = begin
-      let open Point in
+      let empty = Point.empty in
+      let forwards = Point.create Player.Forwards in
+      let backwards = Point.create Player.Backwards in
       [ forwards 2; empty; empty; empty; empty; backwards 5
       ; empty; backwards 3; empty; empty; empty; forwards 5
       ; backwards 5; empty; empty; empty; forwards 3; empty
       ; forwards 5; empty; empty; empty; empty; backwards 2
       ]
     end
-  ; to_play = None
   }
 
-let to_ascii ?(viewer=Player.Backwards) ?home { bar; points; off; to_play } =
-  let to_play_text =
-    match to_play with
-    | None -> "Start of play."
-    | Some player -> String.of_char (Player.to_char player) ^ " to play."
-  in
+let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
   let off_text player =
-    String.of_char (Player.to_char player) ^ "s borne off: " ^
+    String.of_char (Player.char player) ^ "s borne off: " ^
     match Per_player.get off player with
     | 0 -> "none"
     | n -> Int.to_string n
@@ -44,7 +65,7 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; points; off; to_play } =
           | None -> String.make 5 ' '
           | Some player ->
             let height = i - 1 in
-            let player_char = Player.to_char player in
+            let player_char = Player.char player in
             let first_column_char =
               if Int.(Point.number point >= height) then player_char else ' '
             in
@@ -62,7 +83,7 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; points; off; to_play } =
         if Int.(i >= 5) then 2 * (i - 5) + 1 else 2 * (5 - i)
       in
       let number = Per_player.get bar player in
-      let player_char = Player.to_char player in
+      let player_char = Player.char player in
       let first_column_char =
         if Int.(number >= from_middle) then player_char else ' '
       in
@@ -111,8 +132,7 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; points; off; to_play } =
     | Player.Backwards -> forwards_numbers, backwards_numbers
     | Forwards -> backwards_numbers, forwards_numbers
   in
-  [ to_play_text
-  ; off_text (Player.flip viewer)
+  [ off_text (Player.flip viewer)
   ; " " ^ String.concat ~sep:"" (top_order top_numbers) ^ " "
   ; "-" ^ String.make 65 '-' ^ "-"
   ]

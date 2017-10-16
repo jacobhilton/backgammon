@@ -2,7 +2,11 @@ open Core
 
 let main () =
   printf "%s\n" Board.(to_ascii starting);
-  printf "%s\n" (Sexp.to_string (List.sexp_of_t (List.sexp_of_t Int.sexp_of_t) (List.map Roll.all_distances_with_probabilities ~f:fst)));
+  let _ = Movement.apply_legally in
+  List.iter Roll.all_with_probabilities ~f:(fun (roll, _) ->
+    match roll with
+    | Roll.Double i -> printf "(%i %i %i %i)\n" i i i i
+    | High_low (i, j) -> printf "(%i %i)\n" i j);
   ()
 
 let () =

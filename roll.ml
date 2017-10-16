@@ -1,28 +1,24 @@
 open Core
 
-type t = int * int
+type t =
+  | Double of int
+  | High_low of int * int
 
 let self_init () = Random.self_init ()
 
 let generate () =
-  let g () = (Random.int 6) + 1 in
-  (g (), g ())
-
-let rec generate_starting () =
-  let i, j = generate () in
+  let i = Random.int 6 in
+  let j = Random.int 6 in
   match Int.(sign (compare i j)) with
-  | Sign.Neg -> Player.Backwards, (i, j)
-  | Zero -> generate_starting ()
-  | Pos -> Player.Forwards, (i, j)
+  | Sign.Neg -> High_low (j + 1, i + 1)
+  | Zero -> Double (i + 1)
+  | Pos -> High_low (i + 1, j + 1)
 
-let distances (i, j) =
-  match Int.(sign (compare i j)) with
-  | Sign.Neg -> [j; i]
-  | Zero -> [i; i; i; i]
-  | Pos -> [i; j]
-
-let all_distances_with_probabilities =
+let all_with_probabilities =
   List.init 6 ~f:(fun i ->
     List.init (i + 1) ~f:(fun j ->
-      (distances (i + 1, j + 1), if Int.equal i j then 1. /. 36. else 1. /. 18.)))
+      if Int.equal i j then
+        Double (i + 1), 1. /. 36.
+      else
+        High_low (i + 1, j + 1), 1. /. 18.))
   |> List.concat

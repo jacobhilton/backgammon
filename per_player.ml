@@ -3,12 +3,7 @@ type 'a t =
   ; backwards : 'a
   }
 
-let create ~forwards ~backwards =
-  { forwards
-  ; backwards
-  }
-
-let createi f =
+let create f =
   { forwards = f Player.Forwards
   ; backwards = f Backwards
   }
@@ -18,7 +13,12 @@ let create_both x =
   ; backwards = x
   }
 
-let get { forwards; backwards} player =
+let get { forwards; backwards } player =
   match player with
   | Player.Forwards -> forwards
   | Backwards -> backwards
+
+let replace { forwards; backwards } player x =
+  match player with
+  | Player.Forwards -> { forwards = x; backwards }
+  | Backwards -> { forwards; backwards = x }
