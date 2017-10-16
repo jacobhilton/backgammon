@@ -4,11 +4,11 @@ type t = int
 
 let empty = 0
 
-let create player number =
-  let n = Int.abs number in
-  match player with
-  | Player.Forwards -> n
-  | Backwards -> -n
+let create occupier count =
+  let count = Int.max 0 count in
+  match occupier with
+  | Player.Forwards -> count
+  | Backwards -> - count
 
 let occupier t =
   match Int.sign t with
@@ -16,7 +16,7 @@ let occupier t =
   | Zero -> None
   | Pos -> Some Player.Forwards
 
-let number t = Int.abs t
+let count t = Int.abs t
 
 let remove_exn t player =
   match Option.map (occupier t) ~f:(Player.equal player) with
