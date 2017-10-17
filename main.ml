@@ -1,12 +1,11 @@
 open Core
 
 let main () =
-  printf "%s\n" Board.(to_ascii starting);
-  let _ = Move.apply_legally in
-  List.iter Roll.all_with_probabilities ~f:(fun (roll, _) ->
-    match roll with
-    | Roll.Double i -> printf "(%i %i %i %i)\n" i i i i
-    | High_low (i, j) -> printf "(%i %i)\n" i j);
+  let board =
+    Move.execute { from = `Position 8; distance = 3 } Player.Backwards Board.starting
+    |> Or_error.ok_exn
+  in
+  printf "%s\n" Board.(to_ascii board);
   ()
 
 let () =

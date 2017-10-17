@@ -6,40 +6,53 @@ type t =
   ; points : Point.t list
   }
 
-let bar t player = Per_player.get t.bar player
+let bar t ~player = Per_player.get t.bar player
 
-let off t player = Per_player.get t.off player
+let off t ~player = Per_player.get t.off player
 
-let index player ~position =
+let index_of_position ~player ~position =
   match player with
   | Player.Backwards -> position - 1
   | Forwards -> 24 - position
 
-let point_exn t player ~position =
-  List.nth_exn t.points (index player ~position)
+let point_exn t ~player ~position =
+  List.nth_exn t.points (index_of_position ~player ~position)
 
-let replace_point t player ~position ~f =
+let replace_point t ~player ~position ~f =
   let points =
-    List.mapi t.points ~f:(fun i p -> if Int.equal i (index player ~position) then f p else p)
+    List.mapi t.points ~f:(fun i p ->
+      if Int.equal i (index_of_position ~player ~position) then f p else p)
   in
   { t with points }
 
-let remove_from_bar_exn t player =
-  match bar t player with
+let remove_from_bar_exn t ~player =
+  match bar t ~player with
   | 0 -> failwithf "No counters of player %c on the bar to remove" (Player.char player) ()
   | count -> { t with bar = Per_player.replace t.bar player (count - 1) }
 
-let add_to_bar t player =
-  { t with bar = Per_player.replace t.bar player (bar t player + 1) }
+let add_to_bar t ~player =
+  { t with bar = Per_player.replace t.bar player (bar t ~player + 1) }
 
-let add_to_off t player =
-  { t with off = Per_player.replace t.off player (off t player + 1) }
+let add_to_off t ~player =
+  { t with off = Per_player.replace t.off player (off t ~player + 1) }
 
-let remove_from_point_exn t player ~position =
-  replace_point t player ~position ~f:(fun point -> Point.remove_exn point player)
+let remove_from_point_exn t ~player ~position =
+  replace_point t ~player ~position ~f:(fun point -> Point.remove_exn point player)
 
-let add_to_point_exn t player ~position =
-  replace_point t player ~position ~f:(fun point -> Point.add_exn point player)
+let add_to_point_exn t ~player ~position =
+  replace_point t ~player ~position ~f:(fun point -> Point.add_exn point player)
+
+let highest_occupied_position t ~player =
+  let order =
+    match player with
+    | Player.Forwards -> Fn.id
+    | Backwards -> List.rev
+  in
+  List.findi (order t.points) ~f:(fun _ point ->
+    Option.map (Point.occupier point) ~f:(Player.equal player)
+    |> Option.value ~default:false)
+  |> Option.map ~f:(fun (i, _) -> 24 - i)
+  |> Option.value ~default:0
 
 let starting =
   { bar = Per_player.create_both 0
