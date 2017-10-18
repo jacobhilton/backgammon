@@ -16,7 +16,7 @@ val remove_from_point_exn : t -> player:Player.t -> position:int -> t
 
 val add_to_point_exn : t -> player:Player.t -> position:int -> t
 
-val highest_occupied_position : t -> player:Player.t -> int
+val furthest_from_off : t -> player:Player.t -> [ `Bar | `Position of int | `Off ]
 
 val starting : t
 

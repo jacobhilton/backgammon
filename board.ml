@@ -42,17 +42,20 @@ let remove_from_point_exn t ~player ~position =
 let add_to_point_exn t ~player ~position =
   replace_point t ~player ~position ~f:(fun point -> Point.add_exn point player)
 
-let highest_occupied_position t ~player =
-  let order =
-    match player with
-    | Player.Forwards -> Fn.id
-    | Backwards -> List.rev
-  in
-  List.findi (order t.points) ~f:(fun _ point ->
-    Option.map (Point.occupier point) ~f:(Player.equal player)
-    |> Option.value ~default:false)
-  |> Option.map ~f:(fun (i, _) -> 24 - i)
-  |> Option.value ~default:0
+let furthest_from_off t ~player =
+  if Int.(Per_player.get t.bar player > 0) then
+    `Bar
+  else
+    let order =
+      match player with
+      | Player.Forwards -> Fn.id
+      | Backwards -> List.rev
+    in
+    List.findi (order t.points) ~f:(fun _ point ->
+      Option.map (Point.occupier point) ~f:(Player.equal player)
+      |> Option.value ~default:false)
+    |> Option.map ~f:(fun (i, _) -> `Position (24 - i))
+    |> Option.value ~default:`Off
 
 let starting =
   { bar = Per_player.create_both 0
