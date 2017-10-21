@@ -5,9 +5,18 @@ type t = Player.t -> Board.t -> Roll.t -> Board.t Deferred.t
 
 let create = Fn.id
 
+let human player board roll = ignore player; ignore board; ignore roll; failwith "hi"
+
 let random player board roll =
   let choices = Set.to_list (Move.all_legal_turn_outcomes roll player board) in
   Deferred.return (List.nth_exn choices (Random.int (List.length choices)))
+
+let vs ts player board roll = (Per_player.get ts player) player board roll
+
+let vs_human t =
+  vs (Per_player.create (function
+    | Player.Backwards -> human
+    | Forwards -> t))
 
 let winner t ~display =
   let rec winner' to_play_option board move_number =
