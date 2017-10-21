@@ -18,7 +18,7 @@ let execute t player board =
       | Some false ->
         match Point.count point with
         | 1 ->
-          Board.remove_from_point_exn board ~player:(Player.flip player) ~position
+          Board.remove_from_point_exn board ~player:(Player.flip player) ~position:(25 - position)
           |> Board.add_to_bar ~player:(Player.flip player)
           |> Board.add_to_point_exn ~player ~position
           |> Or_error.return
@@ -90,6 +90,11 @@ let all_legal_turns roll player board =
     first_non_empty (all_legal_move_lists (List.init 4 ~f:(fun _ -> distance)))
   | High_low (high, low) ->
     match all_legal_move_lists [high; low], all_legal_move_lists [low; high] with
-    | [two_moves_high_first; high_move], [two_moves_low_first; low_move] ->
+    | [two_moves_high_first; high_move; _], [two_moves_low_first; low_move; _] ->
       first_non_empty [two_moves_high_first @ two_moves_low_first; high_move; low_move]
     | _ -> failwith "unreachable"
+
+let all_legal_turn_outcomes roll player board =
+  all_legal_turns roll player board
+  |> List.map ~f:snd
+  |> Board.Set.of_list

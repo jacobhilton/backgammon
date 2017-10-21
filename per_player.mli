@@ -1,4 +1,4 @@
-type 'a t
+type 'a t [@@deriving compare,sexp]
 
 val create : (Player.t -> 'a) -> 'a t
 

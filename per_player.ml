@@ -1,7 +1,7 @@
 type 'a t =
   { forwards : 'a
   ; backwards : 'a
-  }
+  } [@@deriving compare,sexp]
 
 let create f =
   { forwards = f Player.Forwards

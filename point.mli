@@ -1,4 +1,4 @@
-type t
+type t [@@deriving compare,sexp]
 
 val empty : t
 

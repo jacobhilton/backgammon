@@ -1,5 +1,10 @@
 B _build/default
 FLG -w @a-4-29-40-41-42-44-45-48-58-59-40 -strict-sequence -strict-formats -short-paths -keep-locs
+PKG async
+PKG async_extra
+PKG async_kernel
+PKG async_rpc_kernel
+PKG async_unix
 PKG base
 PKG base.caml
 PKG base.shadow_stdlib

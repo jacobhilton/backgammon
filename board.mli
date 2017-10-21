@@ -1,4 +1,6 @@
-type t
+type t [@@deriving compare,sexp]
+
+include Core.Comparable.S with type t := t
 
 val bar : t -> player:Player.t -> int
 
@@ -17,6 +19,8 @@ val remove_from_point_exn : t -> player:Player.t -> position:int -> t
 val add_to_point_exn : t -> player:Player.t -> position:int -> t
 
 val furthest_from_off : t -> player:Player.t -> [ `Bar | `Position of int | `Off ]
+
+val winner : t -> Player.t option
 
 val starting : t
 

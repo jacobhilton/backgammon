@@ -1,10 +1,15 @@
 open Core
 
-type t =
-  { bar : int Per_player.t
-  ; off : int Per_player.t
-  ; points : Point.t list
-  }
+module T = struct
+  type t =
+    { bar : int Per_player.t
+    ; off : int Per_player.t
+    ; points : Point.t list
+    }
+  [@@deriving compare,sexp]
+end
+include T
+include Comparable.Make(T)
 
 let bar t ~player = Per_player.get t.bar player
 
@@ -56,6 +61,13 @@ let furthest_from_off t ~player =
       |> Option.value ~default:false)
     |> Option.map ~f:(fun (i, _) -> `Position (24 - i))
     |> Option.value ~default:`Off
+
+let winner t =
+  match Per_player.get t.off Player.Forwards, Per_player.get t.off Backwards with
+  | 15, 15 -> None
+  | 15, _ -> Some Player.Forwards
+  | _, 15 -> Some Backwards
+  | _, _ -> None
 
 let starting =
   { bar = Per_player.create_both 0

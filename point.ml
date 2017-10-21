@@ -1,6 +1,6 @@
 open Core
 
-type t = int
+type t = int [@@deriving compare,sexp]
 
 let empty = 0
 
