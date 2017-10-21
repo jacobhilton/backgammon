@@ -90,6 +90,6 @@ let all_legal_turns roll player board =
     first_non_empty (all_legal_move_lists (List.init 4 ~f:(fun _ -> distance)))
   | High_low (high, low) ->
     match all_legal_move_lists [high; low], all_legal_move_lists [low; high] with
-    | [two_moves_high_first; high_move; _], [two_moves_low_first; low_move; _] ->
+    | [two_moves_high_first; high_move], [two_moves_low_first; low_move] ->
       first_non_empty [two_moves_high_first @ two_moves_low_first; high_move; low_move]
     | _ -> failwith "unreachable"
