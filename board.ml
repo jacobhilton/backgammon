@@ -56,10 +56,15 @@ let furthest_from_off t ~player =
   if Int.(Per_player.get t.bar player > 0) then
     `Bar
   else
-    List.findi t.points ~f:(fun _ point ->
+    let order =
+      match player with
+      | Player.Forwards -> Fn.id
+      | Backwards -> List.rev
+    in
+    List.findi (order t.points) ~f:(fun _ point ->
       Option.map (Point.occupier point) ~f:(Player.equal player)
       |> Option.value ~default:false)
-    |> Option.map ~f:(fun (index, _) -> `Position (position_of_index ~player ~index))
+    |> Option.map ~f:(fun (index, _) -> `Position (position_of_index ~player:Player.Forwards ~index))
     |> Option.value ~default:`Off
 
 let winner t =
