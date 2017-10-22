@@ -46,47 +46,37 @@ let rec human ~stdin player board roll =
       |> Result.map_error ~f:(fun err ->
         Error.of_string (sprintf "Could not parse input: %s." (Error.to_string_hum err)))
     in
-    let distances_invalid =
-      match moves_parsed with
-      | Error _ -> false
-      | Ok moves ->
-        begin
-          List.fold moves ~init:(Some (Roll.distances roll)) ~f:(fun roll_distances_or_error move ->
-            Option.bind roll_distances_or_error ~f:(fun roll_distances ->
-              let roll_distances_remaining, could_remove_move_distance =
-                List.fold roll_distances ~init:([], false)
-                  ~f:(fun (roll_distances_so_far, move_distance_removed) roll_distance ->
-                    if (not move_distance_removed) && Int.equal roll_distance (Move.distance move) then
-                      roll_distances_so_far, true
-                    else
-                      roll_distance :: roll_distances_so_far, move_distance_removed)
-              in
-              if could_remove_move_distance then
-                Some roll_distances_remaining
-              else
-                None))
-        end
-        |> Option.is_none
-    in
-    let illegal_move_error err =
-      if distances_invalid then
-        Error.of_string
-          "Illegal move: does not match the roll. \
-           If you are moving one counter more than once, please enter each move separately."
-      else
-        Error.of_string (sprintf "Illegal move: %s." (Error.to_string_hum err))
+    let moves_valid_distances =
+      Or_error.bind moves_parsed ~f:(fun moves ->
+        let legal_subturns =
+          List.map (Move.all_legal_turns roll player board) ~f:(fun (legal_turn, _) ->
+            List.init (List.length legal_turn) ~f:(fun i -> List.split_n legal_turn (i + 1) |> fst))
+          |> List.concat
+        in
+        if
+          List.exists legal_subturns ~f:(fun legal_subturn ->
+            let sorted_distances l = List.sort (List.map l ~f:Move.distance) ~cmp:Int.compare in
+            List.equal (sorted_distances moves) (sorted_distances legal_subturn) ~equal:Int.equal)
+        then
+          Ok moves
+        else
+          Or_error.error_string
+            "Illegal move: does not match the roll. \
+             If you are moving one counter more than once, please enter each move separately.")
     in
     let moves_legal_sequence =
-      Or_error.bind moves_parsed ~f:(List.fold ~init:(Ok board) ~f:(fun acc move ->
+      Or_error.bind moves_valid_distances ~f:(List.fold ~init:(Ok board) ~f:(fun acc move ->
         Or_error.bind acc ~f:(fun board_so_far ->
-          Result.map_error (Move.execute move player board_so_far) ~f:illegal_move_error)))
+          let new_board_so_far = Move.execute move player board_so_far in
+          Result.map_error new_board_so_far ~f:(fun err ->
+            Error.of_string (sprintf "Illegal move: %s." (Error.to_string_hum err))))))
     in
     let new_board =
       Or_error.bind moves_legal_sequence ~f:(fun new_board_maybe_illegal ->
         if Set.mem (Move.all_legal_turn_outcomes roll player board) new_board_maybe_illegal then
           Ok new_board_maybe_illegal
         else
-          Error (illegal_move_error (Error.of_string "it is possible to move more")))
+          Or_error.error_string "Illegal move: it is possible to move more.")
     in
     match new_board with
     | Error err ->
