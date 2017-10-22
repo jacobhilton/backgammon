@@ -4,7 +4,7 @@ open Async
 let main ~two_player =
   Random.self_init ();
   let stdin = Lazy.force Reader.stdin in
-  let other = if two_player then Game.random else Game.human ~stdin in
+  let other = if two_player then Game.human ~stdin else Game.random in
   Game.winner (Game.vs_human other ~stdin) ~display:true
   >>= fun _winner ->
   Deferred.unit
