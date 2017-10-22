@@ -20,6 +20,11 @@ let index_of_position ~player ~position =
   | Player.Backwards -> position - 1
   | Forwards -> 24 - position
 
+let position_of_index ~player ~index =
+  match player with
+  | Player.Backwards -> index + 1
+  | Forwards -> 24 - index
+
 let point_exn t ~player ~position =
   List.nth_exn t.points (index_of_position ~player ~position)
 
@@ -51,15 +56,10 @@ let furthest_from_off t ~player =
   if Int.(Per_player.get t.bar player > 0) then
     `Bar
   else
-    let order =
-      match player with
-      | Player.Forwards -> Fn.id
-      | Backwards -> List.rev
-    in
-    List.findi (order t.points) ~f:(fun _ point ->
+    List.findi t.points ~f:(fun _ point ->
       Option.map (Point.occupier point) ~f:(Player.equal player)
       |> Option.value ~default:false)
-    |> Option.map ~f:(fun (i, _) -> `Position (24 - i))
+    |> Option.map ~f:(fun (index, _) -> `Position (position_of_index ~player ~index))
     |> Option.value ~default:`Off
 
 let winner t =
@@ -77,6 +77,14 @@ let winner t =
   | _, 15 -> Some (Backwards, `Game)
   | _, _ -> None
 
+let pip_count t ~player =
+  25 * Per_player.get t.bar player +
+  begin
+    List.mapi t.points ~f:(fun index point ->
+      position_of_index ~player ~index * Point.count point player)
+    |> List.fold ~init:0 ~f:(+)
+  end
+
 let starting =
   { bar = Per_player.create_both 0
   ; off = Per_player.create_both 0
@@ -92,15 +100,31 @@ let starting =
     end
   }
 
-let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
+let to_ascii ?(show_pip_count=false) ?(viewer=Player.Backwards) ?home t =
   let off_text player =
-    String.of_char (Player.char player) ^ "s borne off: " ^
-    match Per_player.get off player with
-    | 0 -> "none"
-    | n -> Int.to_string n
+    sprintf "%cs borne off: %s" (Player.char player)
+      begin
+        match Per_player.get t.off player with
+        | 0 -> "none"
+        | n -> Int.to_string n
+      end
+  in
+  let pip_count_text player =
+    if show_pip_count then
+      sprintf "Player %c pip count: %i" (Player.char player) (pip_count t ~player)
+    else
+      ""
+  in
+  let off_and_pip_count_text player =
+    let off_text_string = off_text player in
+    let pip_count_text_string = pip_count_text player in
+    let number_of_spaces =
+      Int.max 1 (67 - String.length (off_text_string) - String.length (pip_count_text_string))
+    in
+    off_text_string ^ String.make number_of_spaces ' ' ^ pip_count_text_string
   in
   let points_ascii =
-    List.map points ~f:(fun point ->
+    List.map t.points ~f:(fun point ->
       List.init 10 ~f:(fun i ->
         match i with
         | 0 -> "  v  "
@@ -112,10 +136,10 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
             let height = i - 1 in
             let player_char = Player.char player in
             let first_column_char =
-              if Int.(Point.count point >= height) then player_char else ' '
+              if Int.(Point.count point player >= height) then player_char else ' '
             in
             let second_column_char =
-              if Int.(Point.count point - 8 >= height) then player_char else ' '
+              if Int.(Point.count point player - 8 >= height) then player_char else ' '
             in
             String.init 5 ~f:(function
               | 2 -> first_column_char
@@ -127,7 +151,7 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
       let from_middle =
         if Int.(i >= 5) then 2 * (i - 5) + 1 else 2 * (5 - i)
       in
-      let count = Per_player.get bar player in
+      let count = Per_player.get t.bar player in
       let player_char = Player.char player in
       let first_column_char =
         if Int.(count >= from_middle) then player_char else ' '
@@ -177,7 +201,7 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
     | _, Some `Left | Player.Backwards, None -> List.rev, Fn.id
     | _, Some `Right | Player.Forwards, None -> Fn.id, List.rev
   in
-  [ off_text (Player.flip viewer)
+  [ off_and_pip_count_text (Player.flip viewer)
   ; " " ^ String.concat ~sep:"" (top_positions_order top_positions) ^ " "
   ; "-" ^ String.make 65 '-' ^ "-"
   ]
@@ -186,6 +210,6 @@ let to_ascii ?(viewer=Player.Backwards) ?home { bar; off; points } =
   @ transpose_and_add_border (flip (bottom_order bottom_board)) @
   [ "-" ^ String.make 65 '-' ^ "-"
   ; " " ^ String.concat ~sep:"" (bottom_positions_order bottom_positions) ^ " "
-  ; off_text viewer
+  ; off_and_pip_count_text viewer
   ]
   |> String.concat ~sep:"\n"

@@ -22,6 +22,13 @@ val furthest_from_off : t -> player:Player.t -> [ `Bar | `Position of int | `Off
 
 val winner : t -> (Player.t * [ `Game | `Gammon | `Backgammon ]) option
 
+val pip_count : t -> player:Player.t -> int
+
 val starting : t
 
-val to_ascii : ?viewer:Player.t -> ?home:[ `Left | `Right ] -> t -> string
+val to_ascii
+  :  ?show_pip_count:bool
+  -> ?viewer:Player.t
+  -> ?home:[ `Left | `Right ]
+  -> t
+  -> string

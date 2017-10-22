@@ -94,7 +94,8 @@ let vs_human t ~stdin =
     | Player.Backwards -> human ~stdin
     | Forwards -> t))
 
-let rec winner ?to_play:to_play_option ?(board=Board.starting) ?(move_number=1) t ~display =
+let rec winner ?show_pip_count ~display ?to_play:to_play_option ?(board=Board.starting)
+    ?(move_number=1) t =
   let to_play, roll =
     match to_play_option with
     | None ->
@@ -103,7 +104,7 @@ let rec winner ?to_play:to_play_option ?(board=Board.starting) ?(move_number=1) 
       starting_player, Roll.generate_starting ()
     | Some to_play_value -> to_play_value, Roll.generate ()
   in
-  if display then printf "\n%s\n\n" (Board.to_ascii board ~viewer:to_play);
+  if display then printf "\n%s\n\n" (Board.to_ascii board ?show_pip_count ~viewer:to_play);
   match Board.winner board with
   | Some (player, outcome) ->
     if display then
@@ -116,4 +117,5 @@ let rec winner ?to_play:to_play_option ?(board=Board.starting) ?(move_number=1) 
         (Roll.to_string roll);
     t to_play board roll
     >>= fun new_board ->
-    winner ~to_play:(Player.flip to_play) ~board:new_board ~move_number:(move_number + 1) t ~display
+    winner ?show_pip_count ~display ~to_play:(Player.flip to_play) ~board:new_board
+      ~move_number:(move_number + 1) t

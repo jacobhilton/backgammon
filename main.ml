@@ -12,7 +12,7 @@ let main ~players =
     | 2 -> Game.human ~stdin
     | _ -> failwithf "You cannot play backgammon with %i human players." players ()
   in
-  Game.winner game ~display:true
+  Game.winner ~show_pip_count:true ~display:true game
   >>= fun _winner ->
   Deferred.unit
 

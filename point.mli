@@ -6,7 +6,7 @@ val create : Player.t -> int -> t
 
 val occupier : t -> Player.t option
 
-val count : t -> int
+val count : t -> Player.t -> int
 
 val remove_exn : t -> Player.t -> t
 

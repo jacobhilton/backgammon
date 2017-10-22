@@ -16,9 +16,10 @@ val vs : t Per_player.t -> t
 val vs_human : t -> stdin:Reader.t -> t
 
 val winner
-  :  ?to_play:Player.t
+  :  ?show_pip_count:bool
+  -> display:bool
+  -> ?to_play:Player.t
   -> ?board:Board.t
   -> ?move_number:int
   -> t
-  -> display:bool
   -> Player.t Deferred.t

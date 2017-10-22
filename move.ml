@@ -28,7 +28,7 @@ let execute t player board =
       match Option.map (Point.occupier point) ~f:(Player.equal player) with
       | None | Some true -> Ok (Board.add_to_point_exn board ~player ~position)
       | Some false ->
-        match Point.count point with
+        match Point.count point (Player.flip player) with
         | 1 ->
           Board.remove_from_point_exn board ~player:(Player.flip player) ~position:(25 - position)
           |> Board.add_to_bar ~player:(Player.flip player)

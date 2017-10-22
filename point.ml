@@ -16,7 +16,10 @@ let occupier t =
   | Zero -> None
   | Pos -> Some Player.Forwards
 
-let count t = Int.abs t
+let count t player =
+  match player with
+  | Player.Forwards -> Int.max 0 t
+  | Backwards -> Int.max 0 (-t)
 
 let remove_exn t player =
   match Option.map (occupier t) ~f:(Player.equal player) with
