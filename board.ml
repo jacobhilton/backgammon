@@ -63,10 +63,18 @@ let furthest_from_off t ~player =
     |> Option.value ~default:`Off
 
 let winner t =
-  match Per_player.get t.off Player.Forwards, Per_player.get t.off Backwards with
+  let outcome_if_none_borne_off loser =
+    match furthest_from_off t ~player:loser with
+    | `Bar -> `Backgammon
+    | `Position position -> if Int.(position > 18) then `Backgammon else `Gammon
+    | `Off -> `Gammon
+  in
+  match Per_player.get t.off Forwards, Per_player.get t.off Backwards with
   | 15, 15 -> None
-  | 15, _ -> Some Player.Forwards
-  | _, 15 -> Some Backwards
+  | 15, 0 -> Some (Player.Forwards, outcome_if_none_borne_off Backwards)
+  | 15, _ -> Some (Forwards, `Game)
+  | 0, 15 -> Some (Backwards, outcome_if_none_borne_off Forwards)
+  | _, 15 -> Some (Backwards, `Game)
   | _, _ -> None
 
 let starting =

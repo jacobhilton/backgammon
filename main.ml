@@ -1,11 +1,18 @@
 open Core
 open Async
 
-let main ~two_player =
+let main ~players =
   Random.self_init ();
+  let random = Game.minimax ~depth:0 ~evaluation:(fun _ _ -> Random.float 1.) in
   let stdin = Lazy.force Reader.stdin in
-  let other = if two_player then Game.human ~stdin else Game.random in
-  Game.winner (Game.vs_human other ~stdin) ~display:true
+  let game =
+    match players with
+    | 0 -> random
+    | 1 -> Game.vs_human random ~stdin
+    | 2 -> Game.human ~stdin
+    | _ -> failwithf "You cannot play backgammon with %i human players." players ()
+  in
+  Game.winner game ~display:true
   >>= fun _winner ->
   Deferred.unit
 
@@ -14,8 +21,10 @@ let () =
   Command.async'
     ~summary:"foo"
     [%map_open
-      let two_player = flag "-two-player" no_arg ~doc:" human-vs-human mode" in
+      let players =
+        flag "-players" (optional_with_default 1 int) ~doc:"N number of human players"
+      in
       fun () ->
-        main ~two_player
+        main ~players
     ]
   |> Command.run

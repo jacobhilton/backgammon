@@ -7,6 +7,10 @@ type t =
 
 let create from ~distance = { from; distance }
 
+let from t = t.from
+
+let distance t = t.distance
+
 let execute t player board =
   if Int.(t.distance <= 0) || Int.(t.distance > 6) then
     Or_error.errorf "a counter cannot be moved %i points in a single move" t.distance
@@ -73,7 +77,7 @@ let all_legal_turns roll player board =
       | Error _ -> None
       | Ok b -> Some (t, b))
   in
-  let all_legal_move_lists distances =
+  let all_legal_move_sequences distances =
     List.fold distances ~init:[[[], board]] ~f:(fun acc distance ->
       (List.bind (List.hd_exn acc) ~f:(fun (moves_so_far, board_so_far) ->
          List.map (all_legal_moves ~distance player board_so_far) ~f:(fun (move, new_board) ->
@@ -87,9 +91,9 @@ let all_legal_turns roll player board =
   in
   match roll with
   | Roll.Double distance ->
-    first_non_empty (all_legal_move_lists (List.init 4 ~f:(fun _ -> distance)))
+    first_non_empty (all_legal_move_sequences (List.init 4 ~f:(fun _ -> distance)))
   | High_low (high, low) ->
-    match all_legal_move_lists [high; low], all_legal_move_lists [low; high] with
+    match all_legal_move_sequences [high; low], all_legal_move_sequences [low; high] with
     | [two_moves_high_first; high_move; _], [two_moves_low_first; low_move; _] ->
       first_non_empty [two_moves_high_first @ two_moves_low_first; high_move; low_move]
     | _ -> failwith "unreachable"

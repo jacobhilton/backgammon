@@ -6,7 +6,10 @@ val create : (Player.t -> Board.t -> Roll.t -> Board.t Deferred.t) -> t
 
 val human : stdin:Reader.t -> t
 
-val random : t
+val minimax
+  :  depth:int
+  -> evaluation:(Player.t -> Board.t -> float)
+  -> t
 
 val vs : t Per_player.t -> t
 
