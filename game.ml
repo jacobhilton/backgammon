@@ -35,8 +35,8 @@ let rec human ~stdin player board roll =
     in
     let moves_parsed =
       String.lowercase user_input
-      |> String.substr_replace_all ~pattern:"bar" ~with_:"25"
-      |> String.substr_replace_all ~pattern:"off" ~with_:"0"
+      |> String.substr_replace_all ~pattern:"bar" ~with_:" 25 "
+      |> String.substr_replace_all ~pattern:"off" ~with_:" 0 "
       |> String.map ~f:(fun c -> if Char.is_digit c then c else ' ')
       |> String.split ~on:' '
       |> List.filter ~f:(fun s -> not (String.is_empty s))
