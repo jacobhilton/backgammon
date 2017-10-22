@@ -4,7 +4,9 @@ val create : [ `Bar | `Position of int ] -> distance:int -> t
 
 val from : t -> [ `Bar | `Position of int ]
 
-val distance : t -> int
+val uncapped_distance : t -> int
+
+val capped_distance : t -> int
 
 val execute : t -> Player.t -> Board.t -> Board.t Core.Or_error.t
 

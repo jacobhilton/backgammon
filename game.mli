@@ -7,7 +7,7 @@ val create : (Player.t -> Board.t -> Roll.t -> Board.t Deferred.t) -> t
 val human : stdin:Reader.t -> t
 
 val minimax
-  :  depth:int
+  :  look_ahead:int
   -> evaluation:(Player.t -> Board.t -> float)
   -> t
 

@@ -6,10 +6,13 @@ type t = Player.t -> Board.t -> Roll.t -> Board.t Deferred.t
 let create = Fn.id
 
 (* tree search with pip count *)
+(* probability of move has something to do with stability of likelihood of winning as well as the
+   likelihood itself? *)
+(* transposition table *)
 (* mcts *)
-(* Bellman equation *)
+(* Bellman equation i.e. TD with depth plus discount factor *)
 (* TD *)
-let minimax ~depth:_ ~evaluation:_ player board roll =
+let minimax ~look_ahead:_ ~evaluation:_ player board roll =
   let choices = Set.to_list (Move.all_legal_turn_outcomes roll player board) in
   Deferred.return (List.nth_exn choices (Random.int (List.length choices)))
 
@@ -48,15 +51,15 @@ let rec human ~stdin player board roll =
     in
     let moves_valid_distances =
       Or_error.bind moves_parsed ~f:(fun moves ->
-        let legal_subturns =
+        let legal_turn_prefixes =
           List.map (Move.all_legal_turns roll player board) ~f:(fun (legal_turn, _) ->
-            List.init (List.length legal_turn) ~f:(fun i -> List.split_n legal_turn (i + 1) |> fst))
+            List.init (List.length legal_turn + 1) ~f:(fun n -> List.split_n legal_turn n |> fst))
           |> List.concat
         in
         if
-          List.exists legal_subturns ~f:(fun legal_subturn ->
-            let sorted_distances l = List.sort (List.map l ~f:Move.distance) ~cmp:Int.compare in
-            List.equal (sorted_distances moves) (sorted_distances legal_subturn) ~equal:Int.equal)
+          List.exists legal_turn_prefixes ~f:(fun legal_turn_prefix ->
+            let sorted_distances l = List.sort (List.map l ~f:Move.capped_distance) ~cmp:Int.compare in
+            List.equal (sorted_distances moves) (sorted_distances legal_turn_prefix) ~equal:Int.equal)
         then
           Ok moves
         else
@@ -109,7 +112,7 @@ let rec winner ?to_play:to_play_option ?(board=Board.starting) ?(move_number=1) 
     Deferred.return player
   | None ->
     if display then
-      printf "Move %i: player %c rolls a %s.\n" move_number (Player.char to_play)
+      printf "Move %i: player %c rolls a %s.\n" ((move_number + 1) / 2) (Player.char to_play)
         (Roll.to_string roll);
     t to_play board roll
     >>= fun new_board ->

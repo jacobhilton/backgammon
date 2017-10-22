@@ -3,7 +3,7 @@ open Async
 
 let main ~players =
   Random.self_init ();
-  let random = Game.minimax ~depth:0 ~evaluation:(fun _ _ -> Random.float 1.) in
+  let random = Game.minimax ~look_ahead:0 ~evaluation:(fun _ _ -> Random.float 1.) in
   let stdin = Lazy.force Reader.stdin in
   let game =
     match players with

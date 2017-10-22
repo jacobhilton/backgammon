@@ -9,7 +9,15 @@ let create from ~distance = { from; distance }
 
 let from t = t.from
 
-let distance t = t.distance
+let uncapped_distance t = t.distance
+
+let capped_distance { from; distance } =
+  let cap =
+    match from with
+    | `Bar -> 25
+    | `Position position -> position
+  in
+  Int.min distance cap
 
 let execute t player board =
   if Int.(t.distance <= 0) || Int.(t.distance > 6) then
