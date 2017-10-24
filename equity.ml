@@ -13,17 +13,17 @@ let eval = Fn.id
 (* Bellman equation i.e. TD with depth plus discount factor *)
 (* TD *)
 let minimax t ~look_ahead player board =
+  let apply min_or_max =
+    match min_or_max with
+    | `Min -> List.fold ~init:Float.max_value ~f:Float.min
+    | `Max -> List.fold ~init:Float.min_value ~f:Float.max
+  in
+  let flip min_or_max =
+    match min_or_max with
+    | `Min -> `Max
+    | `Max -> `Min
+  in
   let rec minimax' look_ahead board min_or_max =
-    let apply min_or_max =
-      match min_or_max with
-      | `Min -> List.fold ~init:Float.max_value ~f:Float.min
-      | `Max -> List.fold ~init:Float.min_value ~f:Float.max
-    in
-    let flip min_or_max =
-      match min_or_max with
-      | `Min -> `Max
-      | `Max -> `Min
-    in
     match look_ahead with
     | 0 -> 0.5
     | 1 -> t player board
