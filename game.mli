@@ -6,7 +6,7 @@ val create : (Player.t -> Board.t -> Roll.t -> Board.t Deferred.t) -> t
 
 val eval : t -> Player.t -> Board.t -> Roll.t -> Board.t Deferred.t
 
-val of_evaluation : Evaluation.t -> t
+val of_equity : Equity.t -> t
 
 val human : stdin:Reader.t -> t
 

@@ -7,11 +7,11 @@ let create = Fn.id
 
 let eval = Fn.id
 
-let of_evaluation evaluation player board roll =
+let of_equity equity player board roll =
   let boards_with_values =
     Move.all_legal_turn_outcomes roll player board
     |> Set.to_list
-    |> List.map ~f:(fun board -> (board, Evaluation.eval evaluation player board))
+    |> List.map ~f:(fun board -> (board, Equity.eval equity player board))
   in
   let highest_value =
     List.fold boards_with_values ~init:Float.min_value

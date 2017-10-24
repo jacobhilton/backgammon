@@ -4,7 +4,7 @@ open Async
 let main ~players =
   Random.self_init ();
   let pip_count_ratio =
-    Game.of_evaluation (Evaluation.minimax (Evaluation.pip_count_ratio) ~look_ahead:2)
+    Game.of_equity (Equity.minimax (Equity.pip_count_ratio) ~look_ahead:2)
   in
   let stdin = Lazy.force Reader.stdin in
   let game =
