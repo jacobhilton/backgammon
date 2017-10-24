@@ -5,16 +5,24 @@ type t = Player.t -> Board.t -> Roll.t -> Board.t Deferred.t
 
 let create = Fn.id
 
-(* tree search with pip count *)
-(* probability of move has something to do with stability of likelihood of winning as well as the
-   likelihood itself? *)
-(* transposition table *)
-(* mcts *)
-(* Bellman equation i.e. TD with depth plus discount factor *)
-(* TD *)
-let minimax ~look_ahead:_ ~evaluation:_ player board roll =
-  let choices = Set.to_list (Move.all_legal_turn_outcomes roll player board) in
-  Deferred.return (List.nth_exn choices (Random.int (List.length choices)))
+let eval = Fn.id
+
+let of_evaluation evaluation player board roll =
+  let boards_with_values =
+    Move.all_legal_turn_outcomes roll player board
+    |> Set.to_list
+    |> List.map ~f:(fun board -> (board, Evaluation.eval evaluation player board))
+  in
+  let highest_value =
+    List.fold boards_with_values ~init:Float.min_value
+      ~f:(fun acc (_, value) -> Float.max acc value)
+  in
+  let highest_value_boards =
+    List.filter_map boards_with_values ~f:(fun (board, value) ->
+      if Float.equal value highest_value then Some board else None)
+  in
+  List.nth_exn highest_value_boards (Random.int (List.length highest_value_boards))
+  |> Deferred.return
 
 let rec human ~stdin player board roll =
   printf "Your move: ";

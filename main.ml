@@ -3,12 +3,14 @@ open Async
 
 let main ~players =
   Random.self_init ();
-  let random = Game.minimax ~look_ahead:0 ~evaluation:(fun _ _ -> Random.float 1.) in
+  let pip_count_ratio =
+    Game.of_evaluation (Evaluation.minimax (Evaluation.pip_count_ratio) ~look_ahead:2)
+  in
   let stdin = Lazy.force Reader.stdin in
   let game =
     match players with
-    | 0 -> random
-    | 1 -> Game.vs_human random ~stdin
+    | 0 -> pip_count_ratio
+    | 1 -> Game.vs_human pip_count_ratio ~stdin
     | 2 -> Game.human ~stdin
     | _ -> failwithf "You cannot play backgammon with %i human players." players ()
   in

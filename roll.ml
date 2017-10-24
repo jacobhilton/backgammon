@@ -8,10 +8,6 @@ let to_string = function
   | Double i -> sprintf "%i-%i" i i
   | High_low (i, j) -> sprintf "%i-%i" i j
 
-let distances = function
-  | Double i -> [i; i; i; i]
-  | High_low (i, j) -> [i; j]
-
 let generate () =
   let i = Random.int 6 in
   let j = Random.int 6 in
