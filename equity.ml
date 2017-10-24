@@ -21,13 +21,17 @@ let minimax t ~look_ahead player board =
     | `Min -> `Max
     | `Max -> `Min
   in
+  let to_play = function
+    | `Min -> Player.flip player
+    | `Max -> player
+  in
   let rec minimax' look_ahead board min_or_max =
     match look_ahead with
     | 0 -> 0.5
     | 1 -> t player board
     | _ ->
       List.map Roll.all_with_probabilities ~f:(fun (roll, probability) ->
-        Move.all_legal_turn_outcomes roll (Player.flip player) board
+        Move.all_legal_turn_outcomes roll (to_play min_or_max) board
         |> Set.to_list
         |> List.map ~f:(fun new_board -> minimax' (look_ahead - 1) new_board (flip min_or_max))
         |> apply min_or_max
