@@ -32,3 +32,5 @@ val to_ascii
   -> ?home:[ `Left | `Right ]
   -> t
   -> string
+
+val to_representation : t -> to_play:Player.t -> float array

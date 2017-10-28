@@ -22,3 +22,8 @@ let replace { forwards; backwards } player x =
   match player with
   | Player.Forwards -> { forwards = x; backwards }
   | Backwards -> { forwards; backwards = x }
+
+let map { forwards; backwards } ~f =
+  { forwards = f forwards
+  ; backwards = f backwards
+  }

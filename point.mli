@@ -11,3 +11,5 @@ val count : t -> Player.t -> int
 val remove_exn : t -> Player.t -> t
 
 val add_exn : t -> Player.t -> t
+
+val to_representation : t -> (float * float * float * float) Per_player.t

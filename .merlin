@@ -11,9 +11,15 @@ PKG base.shadow_stdlib
 PKG bigarray
 PKG bin_prot
 PKG bin_prot.shape
+PKG bytes
 PKG core
 PKG core_kernel
 PKG core_kernel.base_for_tests
+PKG ctypes
+PKG ctypes.foreign
+PKG ctypes.foreign.base
+PKG ctypes.foreign.threaded
+PKG ctypes.stubs
 PKG fieldslib
 PKG jane-street-headers
 PKG num
@@ -31,6 +37,10 @@ PKG sexplib
 PKG sexplib.unix
 PKG spawn
 PKG stdio
+PKG str
+PKG tensorflow
+PKG tensorflow.core
+PKG tensorflow.fnn
 PKG threads
 PKG threads.posix
 PKG typerep

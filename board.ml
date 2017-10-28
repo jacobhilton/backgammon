@@ -52,16 +52,16 @@ let remove_from_point_exn t ~player ~position =
 let add_to_point_exn t ~player ~position =
   replace_point t ~player ~position ~f:(fun point -> Point.add_exn point player)
 
+let order player =
+  match player with
+  | Player.Forwards -> Fn.id
+  | Backwards -> List.rev
+
 let furthest_from_off t ~player =
   if Int.(Per_player.get t.bar player > 0) then
     `Bar
   else
-    let order =
-      match player with
-      | Player.Forwards -> Fn.id
-      | Backwards -> List.rev
-    in
-    List.findi (order t.points) ~f:(fun _ point ->
+    List.findi (order player t.points) ~f:(fun _ point ->
       Option.map (Point.occupier point) ~f:(Player.equal player)
       |> Option.value ~default:false)
     |> Option.map ~f:(fun (index, _) -> `Position (position_of_index ~player:Player.Forwards ~index))
@@ -218,3 +218,18 @@ let to_ascii ?(show_pip_count=false) ?(viewer=Player.Backwards) ?home t =
   ; off_and_pip_count_text viewer
   ]
   |> String.concat ~sep:"\n"
+
+let to_representation t ~to_play =
+  let bar_representation = Per_player.map t.bar ~f:(fun count -> Int.to_float count /. 2.) in
+  let off_representation = Per_player.map t.off ~f:(fun count -> Int.to_float count /. 15.) in
+  let points_representation =
+    List.map t.points ~f:(fun point ->
+      Per_player.map (Point.to_representation point) ~f:(fun (x1, x2, x3, x4) -> [x1; x2; x3; x4]))
+  in
+  let representation player =
+    Per_player.get bar_representation player :: Per_player.get off_representation player ::
+    List.concat (List.map (order player points_representation) ~f:(fun x -> Per_player.get x player))
+  in
+  representation Forwards @ (List.rev (representation Backwards))
+  |> order to_play
+  |> Array.of_list

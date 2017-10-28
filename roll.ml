@@ -1,12 +1,12 @@
-open Core
+open Base
 
 type t =
   | Double of int
   | High_low of int * int
 
 let to_string = function
-  | Double i -> sprintf "%i-%i" i i
-  | High_low (i, j) -> sprintf "%i-%i" i j
+  | Double i -> Core.sprintf "%i-%i" i i
+  | High_low (i, j) -> Core.sprintf "%i-%i" i j
 
 let generate () =
   let i = Random.int 6 in
@@ -25,7 +25,7 @@ let all_with_probabilities =
   List.init 6 ~f:(fun i ->
     List.init (i + 1) ~f:(fun j ->
       if Int.equal i j then
-        Double (i + 1), 1. /. 36.
+        Double (i + 1), Float.(1. / 36.)
       else
-        High_low (i + 1, j + 1), 1. /. 18.))
+        High_low (i + 1, j + 1), Float.(1. / 18.)))
   |> List.concat

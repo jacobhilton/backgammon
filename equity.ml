@@ -1,4 +1,4 @@
-open Core
+open Base
 
 type t = Player.t -> Board.t -> float
 
@@ -6,12 +6,12 @@ let create = Fn.id
 
 let eval = Fn.id
 
+(* alpha-bet pruning / negascout / mcts *)
+(* transposition table *)
+(* increase depth while gradually reducing width - select best k moves / use clustering to select die
+   rolls *)
 (* probability of move has something to do with stability of likelihood of winning as well as the
    likelihood itself? *)
-(* transposition table *)
-(* mcts *)
-(* Bellman equation i.e. TD with depth plus discount factor *)
-(* TD *)
 let minimax t ~look_ahead player board =
   let apply = function
     | `Min -> List.fold ~init:Float.max_value ~f:Float.min
@@ -36,11 +36,11 @@ let minimax t ~look_ahead player board =
         |> List.map ~f:(fun new_board -> minimax' (look_ahead - 1) new_board (flip min_or_max))
         |> apply min_or_max
         |> Float.scale probability)
-      |> List.fold ~init:0. ~f:(+.)
+      |> List.fold ~init:0. ~f:Float.(+)
   in
   minimax' look_ahead board `Min
 
 let pip_count_ratio player board =
   let pip_count = Board.pip_count board ~player in
   let opponent_pip_count = Board.pip_count board ~player:(Player.flip player) in
-  (Int.to_float opponent_pip_count) /. (Int.to_float (pip_count + opponent_pip_count))
+  Float.(/) (Int.to_float opponent_pip_count) (Int.to_float (pip_count + opponent_pip_count))
