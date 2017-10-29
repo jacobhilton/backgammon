@@ -35,29 +35,38 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes () =
   let loss = Ops.(neg (reduce_mean (Placeholder.to_node output_placeholder * log model))) in
   { session; type_; input_placeholder; vars = List.rev vars; model; output_placeholder; loss }
 
-let tensors_of_boards_and_players boards_and_players =
-  let inputs =
-    Array.map boards_and_players ~f:(fun (player, board) ->
-      Board.to_representation board ~to_play:player)
+let tensors_and_transforms setups =
+  let inputs, transforms =
+    Array.map setups ~f:(fun (`To_play to_play, player, board) ->
+      ( Board.to_representation board ~to_play:player
+      , if Player.equal to_play player then Fn.id else fun x -> Float.(1. - x)
+      ))
+    |> Array.unzip
   in
-  Tensor.of_float_array2 inputs Float32
+  (Tensor.of_float_array2 inputs Float32, transforms)
 
-let eval t boards_and_players =
-  let inputs = tensors_of_boards_and_players boards_and_players in
+let eval t setups =
+  let inputs, transforms = tensors_and_transforms setups in
   let outputs =
     Session.run
       ~inputs:[Session.Input.float t.input_placeholder inputs]
       ~session:t.session
       (Session.Output.float t.model)
   in
-  Array.map (Tensor.to_float_array2 outputs) ~f:(fun output -> Array.nget output 0)
+  Array.map2_exn (Tensor.to_float_array2 outputs) transforms ~f:(fun output transform ->
+    transform (Array.nget output 0))
 
-let equity t = Equity.create (fun player board -> Array.nget (eval t [| player, board |]) 0)
+let equity t =
+  Equity.create (fun ~to_play player board ->
+    Array.nget (eval t [| `To_play to_play, player, board |]) 0)
 
-let train t ~learning_rate boards_and_players_and_equities =
-  let boards_and_players, equities = Array.unzip boards_and_players_and_equities in
-  let inputs = tensors_of_boards_and_players boards_and_players in
-  let outputs = Tensor.of_float_array2 (Array.map equities ~f:(fun x -> [| x |])) Float32 in
+let train t ~learning_rate setups_and_valuations =
+  let setups, valuations = Array.unzip setups_and_valuations in
+  let inputs, transforms = tensors_and_transforms setups in
+  let transformed_valuations =
+    Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
+  in
+  let outputs = Tensor.of_float_array2 transformed_valuations Float32 in
   let optimizer =
     Optimizers.gradient_descent_minimizer
       ~learning_rate:(Var.f_or_d [] learning_rate ~type_:t.type_)

@@ -1,5 +1,5 @@
 functions: play, evaluate (play against random), train (save as name_number.ckpt after every n)
-minimax needs to distinguish between my move equities and opponent's move equities
+gammon pip count ratio (pip count to point 6 plus 1 if nothing borne off, divided by sum of that plus opponent ordinary pip count)
 [Td.equity] should somehow batch tensorflow calls
 save more often, separate input/output
 two hidden layers? what sizes?

@@ -29,31 +29,37 @@ let train ~games ~filename =
   td_init ~filename
   >>= fun td ->
   let trainer = Equity.minimax Equity.pip_count_ratio ~look_ahead:2 in
-  let rec train' games =
-    if Int.(games <= 0) then
+  let rec train' game_number =
+    if Int.(game_number > games) then
       Deferred.unit
     else
-      let players_and_boards_and_equities = ref [] in
-      let equity = Equity.mapi trainer ~f:(fun player board f ->
-        players_and_boards_and_equities := ((player, board), f) :: !players_and_boards_and_equities;
-        f)
+      let setups_and_valuations = ref [] in
+      let equity = Equity.mapi trainer ~f:(fun ~to_play player board valuation ->
+        setups_and_valuations :=
+          ((`To_play to_play, player, board), valuation) :: !setups_and_valuations;
+        valuation)
       in
       Game.winner ~display:false (Game.of_equity equity)
       >>= fun (winner, outcome, `Moves number_of_moves) ->
       Clock.after (Core.sec 0.01)
       >>= fun () ->
-      printf "Game %i: player %c wins%s after %i moves. Training on %i observed equities.\n"
+      printf
+        "Game %i of %i: player %c wins%s after %i moves. Training on %i observed equity valuations.\n"
+        game_number
         games
         (Player.char winner)
         (match outcome with | `Game -> "" | `Gammon -> " a gammon" | `Backgammon -> " a backgammon")
         number_of_moves
-        (List.length !players_and_boards_and_equities);
-      Td.train td ~learning_rate:0.1 (Array.of_list !players_and_boards_and_equities);
-      train' (games -1)
+        (List.length !setups_and_valuations);
+      Td.train td ~learning_rate:0.1 (Array.of_list !setups_and_valuations);
+      let filename =
+        String.substr_replace_first filename ~pattern:".ckpt" ~with_:(Core.sprintf "_%i.ckpt" games)
+      in
+      if Int.equal (game_number % 1000) 0 then Td.save td ~filename;
+      train' (game_number + 1)
   in
-  train' games
+  train' 1
   >>= fun () ->
-  Td.save td ~filename;
   Deferred.unit
 
 let () =

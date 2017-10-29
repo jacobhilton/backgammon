@@ -1,10 +1,10 @@
 type t
 
-val create : (Player.t -> Board.t -> float) -> t
+val create : (to_play:Player.t -> Player.t -> Board.t -> float) -> t
 
-val eval : t -> Player.t -> Board.t -> float
+val eval : t -> to_play:Player.t -> Player.t -> Board.t -> float
 
-val mapi : t -> f:(Player.t -> Board.t -> float -> float) -> t
+val mapi : t -> f:(to_play:Player.t -> Player.t -> Board.t -> float -> float) -> t
 
 val minimax : t -> look_ahead:int -> t
 
