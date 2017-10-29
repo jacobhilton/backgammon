@@ -6,7 +6,7 @@ type t =
   { session : Session.t
   ; type_ : [ `float ] Node.Type.t
   ; input_placeholder : [ `float ] Ops.Placeholder.t
-  ; vars : [ `float ] Node.t list
+  ; vars : (string * Node.p) list
   ; model : [ `float ] Node.t
   ; output_placeholder : [ `float ] Ops.Placeholder.t
   ; loss : [ `float ] Node.t
@@ -22,12 +22,13 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes () =
     List.zip_exn (input_size :: hidden_layer_sizes) (hidden_layer_sizes @ [output_size])
   in
   let model, vars =
-    List.fold layer_size_pairs ~init:(Ops.Placeholder.to_node input_placeholder, [])
-      ~f:(fun (node_so_far, vars_so_far) (size_from, size_to) ->
-        let bias_vars = Var.f_or_d [1; size_to] 0. ~type_ in
-        let connected_vars = Var.normal [size_from; size_to] ~stddev:epsilon_init ~type_ in
-        ( Ops.(sigmoid ((node_so_far *^ connected_vars) + bias_vars))
-        , connected_vars :: bias_vars :: vars_so_far
+    List.foldi layer_size_pairs ~init:(Ops.Placeholder.to_node input_placeholder, [])
+      ~f:(fun i (node_so_far, vars_so_far) (size_from, size_to) ->
+        let bias_var = Var.f_or_d [1; size_to] 0. ~type_ in
+        let connected_var = Var.normal [size_from; size_to] ~stddev:epsilon_init ~type_ in
+        let label s var = (Core.sprintf "%s_%i" s i, Node.P var) in
+        ( Ops.(sigmoid ((node_so_far *^ connected_var) + bias_var))
+        , label "connected" connected_var :: label "bias" bias_var :: vars_so_far
         ))
   in
   let output_placeholder = Ops.placeholder ~type_ [output_size] in
@@ -46,7 +47,6 @@ let eval t boards_and_players =
   let outputs =
     Session.run
       ~inputs:[Session.Input.float t.input_placeholder inputs]
-      ~targets:(List.map t.vars ~f:(fun var -> Node.P var))
       ~session:t.session
       (Session.Output.float t.model)
   in
@@ -70,6 +70,27 @@ let train t ~learning_rate boards_and_players equities =
         ]
       ~targets:optimizer
       ~session:t.session
-      (Session.Output.float t.model)
+      (Session.Output.float t.loss)
   in
   ()
+
+let save t ~filename =
+  Session.run
+    ~session:t.session
+    ~targets:[Node.P (Ops.save ~filename t.vars)]
+    Session.Output.empty
+
+let load t ~filename =
+  let load_and_assign_nodes =
+    List.map t.vars ~f:(fun (label, (Node.P var)) ->
+      Ops.restore
+        ~type_:(Node.output_type var)
+        (Ops.const_string ~shape:[] [filename])
+        (Ops.const_string ~shape:[] [label])
+      |> Ops.assign var
+      |> fun node -> Node.P node)
+  in
+  Session.run
+    ~session:t.session
+    ~targets:load_and_assign_nodes
+    Session.Output.empty

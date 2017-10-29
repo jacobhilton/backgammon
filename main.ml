@@ -5,7 +5,7 @@ let main ~players =
   let td = Td.create ~hidden_layer_sizes:[40] () in
   Random.init 92384792456989;
   let pip_count_ratio =
-    Game.of_equity (Equity.minimax (Td.equity td) ~look_ahead:2)
+    Game.of_equity (Equity.minimax Equity.pip_count_ratio ~look_ahead:2)
   in
   let stdin = Lazy.force Reader.stdin in
   let game =
@@ -17,6 +17,7 @@ let main ~players =
   in
   Game.winner ~show_pip_count:true ~display:true game
   >>= fun _winner ->
+  let () = Td.save td ~filename:"data.ckpt" in
   Deferred.unit
 
 let () =
