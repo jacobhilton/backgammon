@@ -54,12 +54,13 @@ let eval t boards_and_players =
 
 let equity t = Equity.create (fun player board -> Array.nget (eval t [| player, board |]) 0)
 
-let train t ~learning_rate boards_and_players equities =
+let train t ~learning_rate boards_and_players_and_equities =
+  let boards_and_players, equities = Array.unzip boards_and_players_and_equities in
   let inputs = tensors_of_boards_and_players boards_and_players in
   let outputs = Tensor.of_float_array2 (Array.map equities ~f:(fun x -> [| x |])) Float32 in
   let optimizer =
     Optimizers.gradient_descent_minimizer
-      ~learning_rate:(Var.f_or_d [1] learning_rate ~type_:t.type_)
+      ~learning_rate:(Var.f_or_d [] learning_rate ~type_:t.type_)
       t.loss
   in
   let _ =

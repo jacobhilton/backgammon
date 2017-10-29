@@ -118,7 +118,7 @@ let rec winner ?show_pip_count ~display ?to_play:to_play_option ?(board=Board.st
     if display then
       printf "Player %c wins%s.\n" (Player.char player)
         (match outcome with | `Game -> "" | `Gammon -> " a gammon" | `Backgammon -> " a backgammon");
-    Deferred.return player
+    Deferred.return (player, outcome, `Moves (move_number - 1))
   | None ->
     if display then
       printf "Move %i: player %c rolls a %s.\n" ((move_number + 1) / 2) (Player.char to_play)

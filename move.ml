@@ -97,14 +97,17 @@ let all_legal_turns roll player board =
     List.find moves_and_boards ~f:(fun l -> not (List.is_empty l))
     |> Option.value ~default:[[], board]
   in
-  match roll with
-  | Roll.Double distance ->
-    first_non_empty (all_legal_move_sequences (List.init 4 ~f:(fun _ -> distance)))
-  | High_low (high, low) ->
-    match all_legal_move_sequences [high; low], all_legal_move_sequences [low; high] with
-    | [two_moves_high_first; high_move; _], [two_moves_low_first; low_move; _] ->
-      first_non_empty [two_moves_high_first @ two_moves_low_first; high_move; low_move]
-    | _ -> failwith "unreachable"
+  match Board.winner board with
+  | Some _ -> [[], board]
+  | None ->
+    match roll with
+    | Roll.Double distance ->
+      first_non_empty (all_legal_move_sequences (List.init 4 ~f:(fun _ -> distance)))
+    | High_low (high, low) ->
+      match all_legal_move_sequences [high; low], all_legal_move_sequences [low; high] with
+      | [two_moves_high_first; high_move; _], [two_moves_low_first; low_move; _] ->
+        first_non_empty [two_moves_high_first @ two_moves_low_first; high_move; low_move]
+      | _ -> failwith "unreachable"
 
 let all_legal_turn_outcomes roll player board =
   all_legal_turns roll player board

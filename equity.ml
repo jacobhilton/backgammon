@@ -6,6 +6,8 @@ let create = Fn.id
 
 let eval = Fn.id
 
+let mapi t ~f player board = f player board (t player board)
+
 (* alpha-bet pruning / negascout / mcts *)
 (* transposition table *)
 (* increase depth while gradually reducing width - select best k moves / use clustering to select die
