@@ -12,14 +12,12 @@ let td_init ~filename =
 let play ~players ~filename =
   td_init ~filename
   >>= fun td ->
-  let pip_count_ratio =
-    Game.of_equity (Equity.minimax (Td.equity td) ~look_ahead:2)
-  in
+  let machine = Game.of_equity (Equity.minimax (Td.equity td) ~look_ahead:2) in
   let stdin = Lazy.force Reader.stdin in
   let game =
     match players with
-    | 0 -> pip_count_ratio
-    | 1 -> Game.vs_human pip_count_ratio ~stdin
+    | 0 -> machine
+    | 1 -> Game.vs_human machine ~stdin
     | 2 -> Game.human ~stdin
     | _ -> Core.failwithf "You cannot play backgammon with %i human players." players ()
   in

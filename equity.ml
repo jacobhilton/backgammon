@@ -8,12 +8,6 @@ let eval = Fn.id
 
 let mapi t ~f player board = f player board (t player board)
 
-(* alpha-bet pruning / negascout / mcts *)
-(* transposition table *)
-(* increase depth while gradually reducing width - select best k moves / use clustering to select die
-   rolls *)
-(* probability of move has something to do with stability of likelihood of winning as well as the
-   likelihood itself? *)
 let minimax t ~look_ahead player board =
   let apply = function
     | `Min -> List.fold ~init:Float.max_value ~f:Float.min

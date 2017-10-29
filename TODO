@@ -1,0 +1,21 @@
+functions: play, evaluate (play against random), train (save as name_number.ckpt after every n)
+minimax needs to distinguish between my move equities and opponent's move equities
+[Td.equity] should somehow batch tensorflow calls
+save more often, separate input/output
+two hidden layers? what sizes?
+try to improve encoding: n>=3 instead of n==3, more inputs for the bar (and off)
+train the network on p and (1-p) at the same time
+wrap the above options in a config of some sort
+rename equity to distinguish between functions and values
+
+instead of minimax:
+- alpha-beta pruning / negascout / mcts
+- transposition table
+- increase depth while gradually reducing width - select best k moves / use clustering to select die
+  rolls
+- probability of move has something to do with stability of likelihood of winning as well as the
+  likelihood itself?
+
+http://www.bkgm.com/articles/ZadehKobliska/OnOptimalDoublingInBackgammon/index.html
+https://www.cs.cornell.edu/boom/2001sp/Tsinteris/gammon.htm
+http://www.scholarpedia.org/article/User:Gerald_Tesauro/Proposed/Td-gammon
