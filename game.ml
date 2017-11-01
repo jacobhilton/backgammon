@@ -33,8 +33,8 @@ let rec human ~stdin player board roll =
   | `Ok user_input ->
     let pair l =
       let pairs, x_extra =
-        List.fold l ~init:([], None) ~f:(fun (acc, x_even_option) x ->
-          match x_even_option with
+        List.fold l ~init:([], None) ~f:(fun (acc, x_even_opt) x ->
+          match x_even_opt with
           | None -> acc, Some x
           | Some x_even -> (x_even, x) :: acc, None)
       in
@@ -103,10 +103,10 @@ let vs_human t ~stdin =
     | Player.Backwards -> human ~stdin
     | Forwards -> t))
 
-let rec winner ?show_pip_count ~display ?to_play:to_play_option ?(board=Board.starting)
+let rec winner ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.starting)
     ?(move_number=1) t =
   let to_play, roll =
-    match to_play_option with
+    match to_play_opt with
     | None ->
       let starting_player = if Random.bool () then Player.Forwards else Backwards in
       if display then printf "Player %c to start.\n" (Player.char starting_player);
