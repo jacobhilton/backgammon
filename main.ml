@@ -41,14 +41,14 @@ module Trainee_config = struct
   type t =
     | Td of
         { hidden_layer_sizes : int list
-        ; representation : [ `Original | `Modified ]
+        ; representation : [ `Original | `Modified ] sexp_option
         ; ckpt_to_load : string option
         ; ckpt_to_save : string
-        ; learning_rate : float
+        ; learning_rate : float sexp_option
         }
     | Same of
         { ckpt_to_save : string
-        ; learning_rate : float
+        ; learning_rate : float sexp_option
         }
   [@@deriving of_sexp]
 
@@ -58,6 +58,7 @@ module Trainee_config = struct
 
   let unpack = function
     | Td { hidden_layer_sizes; representation; ckpt_to_load; ckpt_to_save; learning_rate } ->
+      let representation = Option.value representation ~default:`Modified in
       let td = Td.create ~hidden_layer_sizes ~representation () in
       begin
         match ckpt_to_load with
@@ -72,7 +73,7 @@ module Trainee = struct
   type t =
     { td : Td.t
     ; ckpt_to_save : string
-    ; learning_rate : float
+    ; learning_rate : float option
     }
 end
 
@@ -169,10 +170,11 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
           match trainee with
           | None -> ""
           | Some { td; ckpt_to_save = _; learning_rate } ->
+            let learning_rate = Option.value learning_rate ~default:0.1 in
             Td.train td ~learning_rate (Array.of_list !setups_and_valuations);
             sprintf " Training on %i observed equity valuations." (List.length !setups_and_valuations)
         in
-        printf "Game %i of %i: player %c wins%s after %i moves. %s %s%s\n"
+        printf "Game %i of %i: player %c wins%s after %i plies. %s %s%s\n"
           game_number
           games
           (Player.char winner)
