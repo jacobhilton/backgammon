@@ -76,9 +76,6 @@ module Trainee = struct
     }
 end
 
-(* ~hidden_layer_sizes:[40] *)
-(* ~representation:`Modified *)
-(* ~look_ahead:2 *) (* for td and pip count ratio *)
 let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
   Random.self_init ();
   let setups_and_valuations = ref [] in
@@ -91,13 +88,13 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
   in
   let tds, game_how =
     let unpack_and_make_trainer game_config =
-      let tds, game_how = Game_config.unpack game_config in
-      let game_how_trainer =
-        match game_how with
+      let tds, game_or_equity = Game_config.unpack game_config in
+      let game_how =
+        match game_or_equity with
         | `Game game -> `Game game
         | `Equity equity -> `Equity (make_trainer equity)
       in
-      (tds, game_how_trainer)
+      (tds, game_how)
     in
     match forwards, backwards with
     | Game_config.Same, Game_config.Same ->
@@ -126,16 +123,21 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
     match game_how with
     | `Game game -> game
     | `Equity equity -> Game.of_equity equity
-    | `Vs (game_how_forwards, game_how_backwards) ->
+    | `Vs (game_or_equity_forwards, game_or_equity_backwards) ->
       let game_of_game_or_equity = function
         | `Game game -> game
         | `Equity equity -> Game.of_equity equity
       in
       Game.vs (Per_player.create (function
-        | Forwards -> game_of_game_or_equity game_how_forwards
-        | Backwards -> game_of_game_or_equity game_how_backwards))
+        | Forwards -> game_of_game_or_equity game_or_equity_forwards
+        | Backwards -> game_of_game_or_equity game_or_equity_backwards))
   in
-  let backwards_wins = ref 0 in
+  let total_wins = ref (Per_player.create_both 0) in
+  let gammons = ref (Per_player.create_both 0) in
+  let backgammons = ref (Per_player.create_both 0) in
+  let increment counter player =
+    counter := Per_player.replace !counter player ((Per_player.get !counter player) + 1)
+  in
   let rec run game_number =
     if Int.(game_number > games) then
       Deferred.unit
@@ -144,33 +146,48 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
         setups_and_valuations := [];
         Game.winner ~display ~show_pip_count game
         >>= fun (winner, outcome, `Moves number_of_moves) ->
-        if Player.equal winner Player.Backwards then backwards_wins := !backwards_wins + 1;
+        increment total_wins winner;
+        let outcome_text =
+          match outcome with
+          | `Game -> ""
+          | `Gammon -> increment gammons winner; " a gammon"
+          | `Backgammon -> increment backgammons winner; " a backgammon"
+        in
+        let results_text player =
+          let total_wins = Per_player.get !total_wins player in
+          let describe s number =
+            if Int.equal number 1 then sprintf "1 was a %s" s else sprintf "%i were %ss" number s
+          in
+          sprintf "Player %c has won %i game%s, of which %s and %s."
+            (Player.char player)
+            total_wins
+            (if Int.equal total_wins 1 then "" else "s")
+            (describe "gammon" (Per_player.get !gammons player))
+            (describe "backgammon" (Per_player.get !backgammons player))
+        in
+        let training_text =
+          match trainee with
+          | None -> ""
+          | Some { td; ckpt_to_save = _; learning_rate } ->
+            Td.train td ~learning_rate (Array.of_list !setups_and_valuations);
+            sprintf " Training on %i observed equity valuations." (List.length !setups_and_valuations)
+        in
+        printf "Game %i of %i: player %c wins%s after %i moves. %s %s%s\n"
+          game_number
+          games
+          (Player.char winner)
+          outcome_text
+          number_of_moves
+          (results_text Player.Backwards)
+          (results_text Player.Forwards)
+          training_text;
         Clock.after (sec 0.01)
         >>= fun () ->
-        begin
-          match trainee with
-          | None -> ()
-          | Some { td; ckpt_to_save = _; learning_rate } ->
-            printf
-              "Game %i of %i: player %c wins%s after %i moves. \
-               Training on %i observed equity valuations.\n"
-              game_number
-              games
-              (Player.char winner)
-              (match outcome with
-               | `Game -> ""
-               | `Gammon -> " a gammon"
-               | `Backgammon -> " a backgammon")
-              number_of_moves
-              (List.length !setups_and_valuations);
-            Td.train td ~learning_rate (Array.of_list !setups_and_valuations)
-        end;
         run (game_number + 1)
       end
   in
   run 1
   >>= fun () ->
-  printf "Player %c wins %i of %i games.\n" (Player.char Player.Backwards) !backwards_wins games;
   begin
     match trainee with
     | None -> ()
