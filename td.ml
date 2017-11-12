@@ -3,7 +3,8 @@ open Tensorflow
 open Tensorflow_core
 
 type t =
-  { session : Session.t
+  { representation : [ `Original | `Modified ]
+  ; session : Session.t
   ; type_ : [ `float ] Node.Type.t
   ; input_placeholder : [ `float ] Ops.Placeholder.t
   ; vars : (string * Node.p) list
@@ -12,8 +13,12 @@ type t =
   ; loss : [ `float ] Node.t
   }
 
-let create ?(epsilon_init=0.1) ~hidden_layer_sizes () =
-  let input_size = 196 in
+let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
+  let input_size =
+    match representation with
+    | `Original -> 196
+    | `Modified -> 198
+  in
   let output_size = 1 in
   let session = Session.create () in
   let type_ = Node.Type.Float in
@@ -33,12 +38,20 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes () =
   in
   let output_placeholder = Ops.placeholder ~type_ [output_size] in
   let loss = Ops.(neg (reduce_mean (Placeholder.to_node output_placeholder * log model))) in
-  { session; type_; input_placeholder; vars = List.rev vars; model; output_placeholder; loss }
+  { representation
+  ; session
+  ; type_
+  ; input_placeholder
+  ; vars = List.rev vars
+  ; model
+  ; output_placeholder
+  ; loss
+  }
 
-let tensors_and_transforms setups =
+let tensors_and_transforms setups version =
   let inputs, transforms =
     Array.map setups ~f:(fun (`To_play to_play, player, board) ->
-      ( Board.to_representation board ~to_play:player
+      ( Board.to_representation board version ~to_play:player
       , if Player.equal to_play player then Fn.id else fun x -> Float.(1. - x)
       ))
     |> Array.unzip
@@ -46,7 +59,7 @@ let tensors_and_transforms setups =
   (Tensor.of_float_array2 inputs Float32, transforms)
 
 let eval t setups =
-  let inputs, transforms = tensors_and_transforms setups in
+  let inputs, transforms = tensors_and_transforms setups t.representation in
   let outputs =
     Session.run
       ~inputs:[Session.Input.float t.input_placeholder inputs]
@@ -62,7 +75,7 @@ let equity t =
 
 let train t ~learning_rate setups_and_valuations =
   let setups, valuations = Array.unzip setups_and_valuations in
-  let inputs, transforms = tensors_and_transforms setups in
+  let inputs, transforms = tensors_and_transforms setups t.representation in
   let transformed_valuations =
     Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
   in

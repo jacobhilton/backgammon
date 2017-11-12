@@ -1,6 +1,11 @@
 type t
 
-val create : ?epsilon_init:Base.float -> hidden_layer_sizes:int list -> unit -> t
+val create
+  :  ?epsilon_init:Base.float
+  -> hidden_layer_sizes:int list
+  -> representation:[ `Original | `Modified ]
+  -> unit
+  -> t
 
 val eval : t -> ([ `To_play of Player.t ] * Player.t * Board.t) array -> float array
 

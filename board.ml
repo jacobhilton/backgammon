@@ -219,16 +219,26 @@ let to_ascii ?(show_pip_count=false) ?(viewer=Player.Backwards) ?home t =
   ]
   |> String.concat ~sep:"\n"
 
-let to_representation t ~to_play =
-  let bar_representation = Per_player.map t.bar ~f:(fun count -> Int.to_float count /. 2.) in
-  let off_representation = Per_player.map t.off ~f:(fun count -> Int.to_float count /. 15.) in
+let to_representation t version ~to_play =
+  let bar_representation =
+    Per_player.map t.bar ~f:(fun count ->
+      match version with
+      | `Original -> [Int.to_float count /. 2.]
+      | `Modified ->
+        [ (if Int.(count >= 1) then 1. else 0.)
+        ; (if Int.(count >= 2) then Float.(/) (Int.to_float (count - 1)) 2. else 0.)
+        ])
+  in
+  let off_representation = Per_player.map t.off ~f:(fun count -> [Int.to_float count /. 15.]) in
   let points_representation =
     List.map t.points ~f:(fun point ->
-      Per_player.map (Point.to_representation point) ~f:(fun (x1, x2, x3, x4) -> [x1; x2; x3; x4]))
+      Per_player.map (Point.to_representation point version)
+        ~f:(fun (x1, x2, x3, x4) -> [x1; x2; x3; x4]))
   in
   let representation player =
-    Per_player.get bar_representation player :: Per_player.get off_representation player ::
-    List.concat (List.map (order player points_representation) ~f:(fun x -> Per_player.get x player))
+    Per_player.get bar_representation player
+    @ Per_player.get off_representation player
+    @ List.concat (List.map (order player points_representation) ~f:(fun x -> Per_player.get x player))
   in
   representation Forwards @ (List.rev (representation Backwards))
   |> order to_play

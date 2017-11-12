@@ -34,11 +34,13 @@ let add_exn t player =
       (Player.char (Player.flip player)) (Player.char player) ()
   | None | Some true -> t + create player 1
 
-let to_representation t =
+let to_representation t version =
   let forwards_representation t =
     ( (if Int.equal t 1 then 1. else 0.)
     , (if Int.(t >= 2) then 1. else 0.)
-    , (if Int.equal t 3 then 1. else 0.)
+    , (match version with
+       | `Original -> if Int.equal t 3 then 1. else 0.
+       | `Modified -> if Int.(t >= 3) then 1. else 0.)
     , (if Int.(t >= 4) then Float.(/) (Int.to_float (t - 3)) 2. else 0.)
     )
   in

@@ -7,6 +7,7 @@ try to improve encoding: n>=3 instead of n==3, more inputs for the bar (and off)
 train the network on p and (1-p) at the same time
 wrap the above options in a config of some sort
 rename equity to distinguish between functions and values
+report total score / gammon numbers too
 
 instead of minimax:
 - alpha-beta pruning / negascout / mcts
