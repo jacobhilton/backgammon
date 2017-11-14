@@ -9,8 +9,6 @@ val create
 
 val eval : t -> ([ `To_play of Player.t ] * Player.t * Board.t) array -> float array
 
-val equity : t -> Equity.t
-
 val train
   :  t
   -> learning_rate:float

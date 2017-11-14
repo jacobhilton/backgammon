@@ -69,10 +69,6 @@ let eval t setups =
   Array.map2_exn (Tensor.to_float_array2 outputs) transforms ~f:(fun output transform ->
     transform (Array.nget output 0))
 
-let equity t =
-  Equity.create (fun ~to_play player board ->
-    Array.nget (eval t [| `To_play to_play, player, board |]) 0)
-
 let train t ~learning_rate setups_and_valuations =
   let setups, valuations = Array.unzip setups_and_valuations in
   let inputs, transforms = tensors_and_transforms setups t.representation in

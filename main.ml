@@ -8,7 +8,7 @@ module Game_config = struct
     | Td of
         { look_ahead : int
         ; hidden_layer_sizes : int list
-        ; representation : [ `Original | `Modified ]
+        ; representation : [ `Original | `Modified ] sexp_option
         ; ckpt_to_load : string option
         }
     | Same
@@ -27,13 +27,14 @@ module Game_config = struct
     | Pip_count_ratio { look_ahead } ->
       [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead)
     | Td { look_ahead; hidden_layer_sizes; representation; ckpt_to_load } ->
+      let representation = Option.value representation ~default:`Modified in
       let td = Td.create ~hidden_layer_sizes ~representation () in
       begin
         match ckpt_to_load with
         | None -> ()
         | Some filename -> Td.load td ~filename
       end;
-      [td], `Equity (Equity.minimax (Td.equity td) ~look_ahead)
+      [td], `Equity (Equity.minimax' (Td.eval td) ~look_ahead)
     | Same -> failwith "Cannot unpack Same."
 end
 

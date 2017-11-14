@@ -27,3 +27,8 @@ let map { forwards; backwards } ~f =
   { forwards = f forwards
   ; backwards = f backwards
   }
+
+let mapi { forwards; backwards } ~f =
+  { forwards = f Player.Forwards forwards
+  ; backwards = f Backwards backwards
+  }

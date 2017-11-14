@@ -8,4 +8,9 @@ val mapi : t -> f:(to_play:Player.t -> Player.t -> Board.t -> float -> float) ->
 
 val minimax : t -> look_ahead:int -> t
 
+val minimax'
+  :  (([ `To_play of Player.t ] * Player.t * Board.t) array -> float array)
+  -> look_ahead:int
+  -> t
+
 val pip_count_ratio : t
