@@ -40,4 +40,4 @@ Your move:
 
 There is a "pip count ratio" AI which performs an expectiminimax calculation using the ratio of the players' pip count ratios as a heuristic evaluation function.
 
-There is also an implementation of a version of (TD-Gammon)[http://www.scholarpedia.org/article/User:Gerald_Tesauro/Proposed/Td-gammon] using (tensorflow-ocaml)[https://github.com/LaurentMazare/tensorflow-ocaml] which is work in progress.
+There is also an implementation of a version of [TD-Gammon](http://www.scholarpedia.org/article/User:Gerald_Tesauro/Proposed/Td-gammon) using [tensorflow-ocaml](https://github.com/LaurentMazare/tensorflow-ocaml) which is work in progress.
