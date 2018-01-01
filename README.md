@@ -3,7 +3,7 @@
 An OCaml implementation of command-line backgammon with an AI trained using reinforcement learning.
 
 The basic reinforcement learning algorithm is loosely based on the classic [TD-Gammon](http://www.scholarpedia.org/article/User:Gerald_Tesauro/Proposed/Td-gammon) algorithm, with a few differences:
-- The network is trained to estimate the chance of winning from a given position by looking ahead to refine its own estimates - this is similar to the case *λ* = 0 in the original algorithm.
+- The network is trained to estimate the chance of winning from a given position by looking ahead to refine its own estimate - this is similar to the case *λ* = 0 in the original algorithm.
 - As well as training by playing against itself, the network can also be trained by watching a hand-crafted AI play against itself, in an attempt to speed up the early stages of training. The hand-crafted AI used looks ahead to the next player's turn and uses the ratio of the players' pip counts as a heuristic evaluation function.
 - The board is encoded slightly differently: the number *n* of counters on a particular point is encoded using the condition *n* ≥ 3 rather than the condition *n* = 3, in an attempt to take advantage of the fact that this indicates that the player will still have a made point after removing a counter; also, the unit indicating whose turn it is is removed, thereby removing a symmetry of the original representation.
 
