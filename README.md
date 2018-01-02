@@ -8,6 +8,7 @@ The basic reinforcement learning algorithm is loosely based on the classic [TD-G
 - The board is encoded slightly differently: the number *n* of counters on a particular point is encoded using the condition *n* ≥ 3 rather than the condition *n* = 3, in an attempt to take advantage of the fact that this indicates that the player will still have a made point after removing a counter; also, the unit indicating whose turn it is is removed, thereby removing a symmetry of the original representation.
 
 This is currently work in progress. Once the basic setup is working I intend to adapt the algorithm to include ideas from more recent progress in reinforcement learning, such as:
+- Increasing the depth of the neural network
 - Using experience replay to smoothen training
 - Replacing the exhaustive fixed-depth tree search with a Monte Carlo tree search guided by the output of the neural network
 
