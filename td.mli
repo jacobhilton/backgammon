@@ -11,7 +11,7 @@ val eval : t -> ([ `To_play of Player.t ] * Player.t * Board.t) array -> float a
 
 val train
   :  t
-  -> learning_rate:float
+  -> learning_rate_per_batch_item:float
   -> (([ `To_play of Player.t ] * Player.t * Board.t) * float) array
   -> unit
 

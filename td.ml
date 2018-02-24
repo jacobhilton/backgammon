@@ -69,15 +69,17 @@ let eval t setups =
   Array.map2_exn (Tensor.to_float_array2 outputs) transforms ~f:(fun output transform ->
     transform (Array.nget output 0))
 
-let train t ~learning_rate setups_and_valuations =
+let train t ~learning_rate_per_batch_item setups_and_valuations =
   let setups, valuations = Array.unzip setups_and_valuations in
   let inputs, transforms = tensors_and_transforms setups t.representation in
   let transformed_valuations =
     Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
   in
   let outputs = Tensor.of_float_array2 transformed_valuations Float32 in
+  let batch_items = Array.length setups_and_valuations in
+  let learning_rate = Float.(learning_rate_per_batch_item * Float.of_int batch_items) in
   let optimizer =
-    Optimizers.gradient_descent_minimizer
+    Optimizers.adam_minimizer
       ~learning_rate:(Var.f_or_d [] learning_rate ~type_:t.type_)
       t.loss
   in

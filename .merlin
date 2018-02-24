@@ -1,5 +1,6 @@
 B _build/default
-FLG -w @a-4-29-40-41-42-44-45-48-58-59-40 -strict-sequence -strict-formats -short-paths -keep-locs
+FLG -ppx "_build/default/.ppx/ppx_compare+ppx_let+ppx_sexp_conv/ppx.exe --as-ppx"
+FLG -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs
 PKG async
 PKG async_extra
 PKG async_kernel
@@ -21,19 +22,23 @@ PKG ctypes.foreign.base
 PKG ctypes.foreign.threaded
 PKG ctypes.stubs
 PKG fieldslib
+PKG integers
 PKG jane-street-headers
 PKG num
 PKG num.core
 PKG ppx_assert.runtime-lib
 PKG ppx_bench.runtime-lib
 PKG ppx_compare.runtime-lib
+PKG ppx_deriving.runtime
 PKG ppx_expect.collector
 PKG ppx_expect.common
 PKG ppx_expect.config
 PKG ppx_hash.runtime-lib
 PKG ppx_inline_test.config
 PKG ppx_inline_test.runtime-lib
+PKG result
 PKG sexplib
+PKG sexplib.0
 PKG sexplib.unix
 PKG spawn
 PKG stdio
@@ -46,4 +51,3 @@ PKG threads.posix
 PKG typerep
 PKG unix
 PKG variantslib
-S .
