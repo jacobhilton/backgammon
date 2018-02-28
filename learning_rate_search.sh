@@ -3,7 +3,7 @@ STEP="$2"
 END="$3"
 GAMES="$4"
 for EXPONENT in {1..12}; do
-    for BASE in 1 2 5; do
+    for BASE in 5 2 1; do
 	LEARNING_RATE_PER_BATCH_ITEM="${BASE}e-$EXPONENT"
 	echo "Using a learning rate per batch item of $LEARNING_RATE_PER_BATCH_ITEM."
 	for I in $(eval echo {$(($START+$STEP))..$(($END+$STEP))..$STEP}); do
