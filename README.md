@@ -11,6 +11,7 @@ This is currently work in progress. Once the basic setup is working I intend to 
 - Using experience replay to smoothen training
 - Replacing the exhaustive fixed-depth tree search with a Monte Carlo tree search guided by the output of the neural network
 - Using a different neural network architecture
+- Using improved optimisation algorithms such as Adam
 
 The implementation uses [tensorflow-ocaml](https://github.com/LaurentMazare/tensorflow-ocaml).
 

@@ -13,6 +13,7 @@ wrap the above options in a config of some sort
 rename equity to distinguish between functions and values
 report total score / gammon numbers too
 regularization?
+max experience replay saveable
 
 instead of minimax:
 - alpha-beta pruning / negascout / mcts
