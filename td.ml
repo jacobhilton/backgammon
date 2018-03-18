@@ -88,20 +88,20 @@ module Training_data = struct
 
   type t =
     { config : Config.t
-    ; replay_memory : (([ `To_play of Player.t ] * Player.t * Board.t) * float) Replayer.t
+    ; replay_memory : (([ `To_play of Player.t ] * Player.t * Board.t) * float) Replay_memory.t
     }
 
   let create ?(config=Config.default) () =
     { config
-    ; replay_memory = Replayer.create ~capacity:config.replay_memory_capacity
+    ; replay_memory = Replay_memory.create ~capacity:config.replay_memory_capacity
     }
 end
 
 let train t ~(training_data : Training_data.t) setups_and_valuations =
-  Replayer.enqueue training_data.replay_memory setups_and_valuations;
+  Replay_memory.enqueue training_data.replay_memory setups_and_valuations;
   for _ = 1 to training_data.config.minibatches_number do
     let setups, valuations =
-      Replayer.sample training_data.replay_memory training_data.config.minibatch_size
+      Replay_memory.sample training_data.replay_memory training_data.config.minibatch_size
       |> Array.unzip
     in
     let inputs, transforms = tensors_and_transforms setups t.representation in
