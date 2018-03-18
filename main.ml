@@ -45,11 +45,11 @@ module Trainee_config = struct
         ; representation : [ `Original | `Modified ] sexp_option
         ; ckpt_to_load : string option
         ; ckpt_to_save : string
-        ; learning_rate_per_batch_item : float sexp_option
+        ; learning_config : unit sexp_option
         }
     | Same of
         { ckpt_to_save : string
-        ; learning_rate_per_batch_item : float sexp_option
+        ; learning_config : unit sexp_option
         }
   [@@deriving of_sexp]
 
@@ -63,7 +63,7 @@ module Trainee_config = struct
         ; representation
         ; ckpt_to_load
         ; ckpt_to_save
-        ; learning_rate_per_batch_item
+        ; learning_config
         } ->
       let representation = Option.value representation ~default:`Modified in
       let td = Td.create ~hidden_layer_sizes ~representation () in
@@ -72,18 +72,18 @@ module Trainee_config = struct
         | None -> ()
         | Some filename -> Td.load td ~filename
       end;
-      Some td, ckpt_to_save, learning_rate_per_batch_item
+      Some td, ckpt_to_save, learning_config
     | Same
         { ckpt_to_save
-        ; learning_rate_per_batch_item
-        } -> None, ckpt_to_save, learning_rate_per_batch_item
+        ; learning_config
+        } -> None, ckpt_to_save, learning_config
 end
 
 module Trainee = struct
   type t =
     { td : Td.t
     ; ckpt_to_save : string
-    ; learning_rate_per_batch_item : float option
+    ; learning_config : unit option
     }
 end
 
@@ -119,7 +119,7 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
   in
   let trainee =
     Option.map trainee_config ~f:(fun trainee_config_value ->
-      let td_opt, ckpt_to_save, learning_rate_per_batch_item =
+      let td_opt, ckpt_to_save, learning_config =
         Trainee_config.unpack trainee_config_value
       in
       let td =
@@ -130,7 +130,7 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
           | [td] -> td
           | [] | _ :: _ :: _ -> failwith "Trainee must be specified explicitly."
       in
-      { Trainee.td; ckpt_to_save; learning_rate_per_batch_item })
+      { Trainee.td; ckpt_to_save; learning_config })
   in
   let game =
     match game_how with
@@ -181,11 +181,9 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
         let training_text =
           match trainee with
           | None -> ""
-          | Some { td; ckpt_to_save = _; learning_rate_per_batch_item } ->
-            let learning_rate_per_batch_item =
-              Option.value learning_rate_per_batch_item ~default:0.1
-            in
-            Td.train td ~learning_rate_per_batch_item (Array.of_list !setups_and_valuations);
+          | Some { td; ckpt_to_save = _; learning_config } ->
+            Option.iter learning_config ~f:Fn.id; (* CR jhilton: create a learning config *)
+            Td.train td (Array.of_list !setups_and_valuations);
             sprintf " Training on %i observed equity valuations." (List.length !setups_and_valuations)
         in
         printf "Game %i of %i: player %c wins%s after %i plies. %s %s%s\n"
@@ -207,7 +205,7 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
   begin
     match trainee with
     | None -> ()
-    | Some { td; ckpt_to_save; learning_rate_per_batch_item = _ } -> Td.save td ~filename:ckpt_to_save
+    | Some { td; ckpt_to_save; learning_config = _ } -> Td.save td ~filename:ckpt_to_save
   end;
   Deferred.unit
 

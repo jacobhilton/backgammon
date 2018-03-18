@@ -1,4 +1,4 @@
-open Base
+open Core
 
 type t = to_play:Player.t -> Player.t -> Board.t -> float
 

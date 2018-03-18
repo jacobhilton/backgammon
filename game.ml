@@ -1,4 +1,4 @@
-open Base
+open Core
 open Async
 
 type t = Player.t -> Board.t -> Roll.t -> Board.t Deferred.t
@@ -56,7 +56,7 @@ let rec human ~stdin player board roll =
       |> Or_error.map ~f:(List.map ~f:(fun (i, j) ->
         Move.create (if Int.equal i 25 then `Bar else `Position i) ~distance:(i - j)))
       |> Result.map_error ~f:(fun err ->
-        Error.of_string (Core.sprintf "Could not parse input: %s." (Error.to_string_hum err)))
+        Error.of_string (sprintf "Could not parse input: %s." (Error.to_string_hum err)))
     in
     let moves_valid_distances =
       Or_error.bind moves_parsed ~f:(fun moves ->
@@ -81,7 +81,7 @@ let rec human ~stdin player board roll =
         Or_error.bind acc ~f:(fun board_so_far ->
           let new_board_so_far = Move.execute move player board_so_far in
           Result.map_error new_board_so_far ~f:(fun err ->
-            Error.of_string (Core.sprintf "Illegal move: %s." (Error.to_string_hum err))))))
+            Error.of_string (sprintf "Illegal move: %s." (Error.to_string_hum err))))))
     in
     let new_board =
       Or_error.bind moves_legal_sequence ~f:(fun new_board_maybe_illegal ->

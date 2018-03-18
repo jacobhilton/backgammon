@@ -1,4 +1,4 @@
-open Base
+open Core
 
 type t = int [@@deriving compare,sexp]
 
@@ -24,13 +24,13 @@ let count t player =
 let remove_exn t player =
   match Option.map (occupier t) ~f:(Player.equal player) with
   | None | Some false ->
-    Core.failwithf "No counters of player %c on point to remove" (Player.char player) ()
+    failwithf "No counters of player %c on point to remove" (Player.char player) ()
   | Some true -> t - create player 1
 
 let add_exn t player =
   match Option.map (occupier t) ~f:(Player.equal player) with
   | Some false ->
-    Core.failwithf "Counters of player %c prevent addition of counters of player %c"
+    failwithf "Counters of player %c prevent addition of counters of player %c"
       (Player.char (Player.flip player)) (Player.char player) ()
   | None | Some true -> t + create player 1
 

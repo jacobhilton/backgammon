@@ -1,12 +1,12 @@
-open Base
+open Core
 
 type t =
   | Double of int
   | High_low of int * int
 
 let to_string = function
-  | Double i -> Core.sprintf "%i-%i" i i
-  | High_low (i, j) -> Core.sprintf "%i-%i" i j
+  | Double i -> sprintf "%i-%i" i i
+  | High_low (i, j) -> sprintf "%i-%i" i j
 
 let generate () =
   let i = Random.int 6 in
