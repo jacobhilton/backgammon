@@ -6,6 +6,6 @@ val capacity : _ t -> int
 
 val size : _ t -> int
 
-val enqueue : 'a t -> 'a list -> unit
+val enqueue : 'a t -> 'a array -> unit
 
-val sample : 'a t -> int -> 'a list
+val sample : 'a t -> int -> 'a array

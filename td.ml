@@ -69,29 +69,63 @@ let eval t setups =
   Array.map2_exn (Tensor.to_float_array2 outputs) transforms ~f:(fun output transform ->
     transform (Array.nget output 0))
 
-let train t setups_and_valuations =
-  let setups, valuations = Array.unzip setups_and_valuations in
-  let inputs, transforms = tensors_and_transforms setups t.representation in
-  let transformed_valuations =
-    Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
-  in
-  let outputs = Tensor.of_float_array2 transformed_valuations Float32 in
-  let optimizer =
-    Optimizers.adam_minimizer
-      ~learning_rate:(Var.f_or_d [] 0.001 ~type_:t.type_)
-      t.loss
-  in
-  let _ =
-    Session.run
-      ~inputs:
-        [ Session.Input.float t.input_placeholder inputs
-        ; Session.Input.float t.output_placeholder outputs
-        ]
-      ~targets:optimizer
-      ~session:t.session
-      (Session.Output.float t.loss)
-  in
-  ()
+module Training_data = struct
+  module Config = struct
+    type t =
+      { replay_memory_capacity : int
+      ; minibatch_size : int
+      ; minibatches_number : int
+      ; adam_learning_rate : float
+      } [@@deriving of_sexp]
+
+    let default =
+      { replay_memory_capacity = 10000
+      ; minibatch_size = 100
+      ; minibatches_number = 100
+      ; adam_learning_rate = 0.001
+      }
+  end
+
+  type t =
+    { config : Config.t
+    ; replay_memory : (([ `To_play of Player.t ] * Player.t * Board.t) * float) Replayer.t
+    }
+
+  let create ?(config=Config.default) () =
+    { config
+    ; replay_memory = Replayer.create ~capacity:config.replay_memory_capacity
+    }
+end
+
+let train t ~(training_data : Training_data.t) setups_and_valuations =
+  Replayer.enqueue training_data.replay_memory setups_and_valuations;
+  for _ = 1 to training_data.config.minibatches_number do
+    let setups, valuations =
+      Replayer.sample training_data.replay_memory training_data.config.minibatch_size
+      |> Array.unzip
+    in
+    let inputs, transforms = tensors_and_transforms setups t.representation in
+    let transformed_valuations =
+      Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
+    in
+    let outputs = Tensor.of_float_array2 transformed_valuations Float32 in
+    let optimizer =
+      Optimizers.adam_minimizer
+        ~learning_rate:(Var.f_or_d [] training_data.config.adam_learning_rate ~type_:t.type_)
+        t.loss
+    in
+    let _ =
+      Session.run
+        ~inputs:
+          [ Session.Input.float t.input_placeholder inputs
+          ; Session.Input.float t.output_placeholder outputs
+          ]
+        ~targets:optimizer
+        ~session:t.session
+        (Session.Output.float t.loss)
+    in
+    ()
+  done
 
 let save t ~filename =
   Session.run

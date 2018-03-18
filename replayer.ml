@@ -24,7 +24,7 @@ let create ~capacity =
     }
 
 let enqueue t items =
-  List.iter items ~f:(fun item ->
+  Array.iter items ~f:(fun item ->
     t.newest <- (t.newest + 1) % t.capacity;
     Array.set t.queue t.newest (Some item);
     t.size <- Int.min (t.size + 1) t.capacity);
@@ -46,24 +46,27 @@ let shuffle l =
   |> List.sort ~cmp:(fun (_, a) (_, b) -> Int.compare a b)
   |> List.map ~f:fst
 
-let rec sample t sample_size =
-  if Int.(sample_size > 0) && (Int.equal t.size 0) then
-    failwith "Nothing to sample."
-  else
-    let items =
-      match t.shuffled_items_remaining with
-      | Some x -> x
-      | None -> shuffle (to_list_oldest_first t)
-    in
-    let number_of_items = List.length items in
-    if Int.(number_of_items < sample_size) then
-      begin
-        t.shuffled_items_remaining <- None;
-        items @ (sample t Int.(sample_size - number_of_items))
-      end
+let sample t sample_size =
+  let rec sample_list t sample_size =
+    if Int.(sample_size > 0) && (Int.equal t.size 0) then
+      failwith "Nothing to sample."
     else
-      begin
-        let split_items = List.split_n items sample_size in
-        t.shuffled_items_remaining <- Some (snd split_items);
-        fst split_items
-      end
+      let items =
+        match t.shuffled_items_remaining with
+        | Some x -> x
+        | None -> shuffle (to_list_oldest_first t)
+      in
+      let number_of_items = List.length items in
+      if Int.(number_of_items < sample_size) then
+        begin
+          t.shuffled_items_remaining <- None;
+          items @ (sample_list t Int.(sample_size - number_of_items))
+        end
+      else
+        begin
+          let split_items = List.split_n items sample_size in
+          t.shuffled_items_remaining <- Some (snd split_items);
+          fst split_items
+        end
+  in
+  Array.of_list (sample_list t sample_size)
