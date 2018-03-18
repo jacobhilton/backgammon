@@ -79,8 +79,8 @@ module Training_data = struct
       } [@@deriving of_sexp]
 
     let default =
-      { replay_memory_capacity = 10000
-      ; minibatch_size = 100
+      { replay_memory_capacity = 100000
+      ; minibatch_size = 128
       ; minibatches_number = 100
       ; adam_learning_rate = 0.001
       }

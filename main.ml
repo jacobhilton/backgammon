@@ -184,7 +184,7 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
           | None -> ""
           | Some { td; ckpt_to_save = _; training_data } ->
             Td.train td ~training_data (Array.of_list !setups_and_valuations);
-            sprintf " Training on %i observed equity valuations." (List.length !setups_and_valuations)
+            sprintf " Training using an additional %i observed equity valuations." (List.length !setups_and_valuations)
         in
         printf "Game %i of %i: player %c wins%s after %i plies. %s %s%s\n"
           game_number
