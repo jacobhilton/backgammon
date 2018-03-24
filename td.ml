@@ -11,6 +11,7 @@ type t =
   ; model : [ `float ] Node.t
   ; output_placeholder : [ `float ] Ops.Placeholder.t
   ; loss : [ `float ] Node.t
+  ; optimizer : Node.p list
   }
 
 let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
@@ -38,6 +39,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   in
   let output_placeholder = Ops.placeholder ~type_ [output_size] in
   let loss = Ops.(neg (reduce_mean (Placeholder.to_node output_placeholder * log model))) in
+  let optimizer = Optimizers.adam_minimizer ~learning_rate:(Var.f_or_d [] 0.001 ~type_) loss in
   { representation
   ; session
   ; type_
@@ -46,6 +48,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   ; model
   ; output_placeholder
   ; loss
+  ; optimizer
   }
 
 let tensors_and_transforms setups version =
@@ -76,15 +79,13 @@ module Training_data = struct
       ; train_every : int
       ; minibatch_size : int
       ; minibatches_number : int
-      ; adam_learning_rate : float
       } [@@deriving of_sexp]
 
     let default =
-      { replay_memory_capacity = 100000
+      { replay_memory_capacity = 1_000_000
       ; train_every = 100
       ; minibatch_size = 128
-      ; minibatches_number = 100
-      ; adam_learning_rate = 0.001
+      ; minibatches_number = 100_000
       }
   end
 
@@ -115,18 +116,13 @@ let train t ~(training_data : Training_data.t) setups_and_valuations =
         Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
       in
       let outputs = Tensor.of_float_array2 transformed_valuations Float32 in
-      let optimizer =
-        Optimizers.adam_minimizer
-          ~learning_rate:(Var.f_or_d [] training_data.config.adam_learning_rate ~type_:t.type_)
-          t.loss
-      in
       let _ =
         Session.run
           ~inputs:
             [ Session.Input.float t.input_placeholder inputs
             ; Session.Input.float t.output_placeholder outputs
             ]
-          ~targets:optimizer
+          ~targets:t.optimizer
           ~session:t.session
           (Session.Output.float t.loss)
       in
