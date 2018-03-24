@@ -38,7 +38,11 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
         ))
   in
   let output_placeholder = Ops.placeholder ~type_ [output_size] in
-  let loss = Ops.(neg (reduce_mean (Placeholder.to_node output_placeholder * log model))) in
+  let output_node = Ops.Placeholder.to_node output_placeholder in
+  let one = Var.f_or_d [output_size] 1. ~type_ in
+  let loss =
+    Ops.(neg (reduce_mean (output_node * log model + (one - output_node) * log (one - model))))
+  in
   let optimizer = Optimizers.adam_minimizer ~learning_rate:(Var.f_or_d [] 0.001 ~type_) loss in
   { representation
   ; session
@@ -82,10 +86,10 @@ module Training_data = struct
       } [@@deriving of_sexp]
 
     let default =
-      { replay_memory_capacity = 1_000_000
+      { replay_memory_capacity = 100_000
       ; train_every = 100
       ; minibatch_size = 128
-      ; minibatches_number = 100_000
+      ; minibatches_number = 10_000
       }
   end
 
