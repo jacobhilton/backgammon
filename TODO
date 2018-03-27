@@ -1,5 +1,3 @@
-Adam optimizer
-optimize learning rate
 try just using 1-ply search and updating using the best move
 enforce that equities are correct in winning states (at least for minimax)
 functions: play, evaluate (play against random), train (save as name_number.ckpt after every n)

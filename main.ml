@@ -25,7 +25,7 @@ module Game_config = struct
       let stdin = Lazy.force Reader.stdin in
       [], `Game (Game.human ~stdin)
     | Pip_count_ratio { look_ahead } ->
-      [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead)
+      [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead Game)
     | Td { look_ahead; hidden_layer_sizes; representation; ckpt_to_load } ->
       let representation = Option.value representation ~default:`Modified in
       let td = Td.create ~hidden_layer_sizes ~representation () in
@@ -34,7 +34,7 @@ module Game_config = struct
         | None -> ()
         | Some filename -> Td.load td ~filename
       end;
-      [td], `Equity (Equity.minimax' (Td.eval td) ~look_ahead)
+      [td], `Equity (Equity.minimax' (Td.eval td) ~look_ahead Game)
     | Same -> failwith "Cannot unpack Same."
 end
 
@@ -161,12 +161,13 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
         Game.winner ~display ~show_pip_count game
         >>= fun (winner, outcome, `Moves number_of_moves) ->
         increment total_wins winner;
-        let outcome_text =
+        begin
           match outcome with
-          | `Game -> ""
-          | `Gammon -> increment gammons winner; " a gammon"
-          | `Backgammon -> increment backgammons winner; " a backgammon"
-        in
+          | Outcome.Game -> ()
+          | Gammon -> increment gammons winner
+          | Backgammon -> increment backgammons winner
+        end;
+        let outcome_text = Outcome.to_phrase outcome in
         let results_text player =
           let total_wins = Per_player.get !total_wins player in
           let describe s number =

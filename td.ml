@@ -58,7 +58,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
 let tensors_and_transforms setups version =
   let inputs, transforms =
     Array.map setups ~f:(fun (`To_play to_play, player, board) ->
-      ( Board.to_representation board version ~to_play:player
+      ( Board.to_representation board version ~to_play
       , if Player.equal to_play player then Fn.id else fun x -> Float.(1. - x)
       ))
     |> Array.unzip

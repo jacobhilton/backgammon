@@ -21,4 +21,4 @@ val winner
   -> ?board:Board.t
   -> ?move_number:int
   -> t
-  -> (Player.t * [ `Game | `Gammon | `Backgammon ] * [ `Moves of int ]) Deferred.t
+  -> (Player.t * Outcome.t * [ `Moves of int ]) Deferred.t

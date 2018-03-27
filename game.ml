@@ -116,9 +116,7 @@ let rec winner ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.start
   if display then printf "\n%s\n\n" (Board.to_ascii board ?show_pip_count ~viewer:to_play);
   match Board.winner board with
   | Some (player, outcome) ->
-    if display then
-      printf "Player %c wins%s.\n" (Player.char player)
-        (match outcome with | `Game -> "" | `Gammon -> " a gammon" | `Backgammon -> " a backgammon");
+    if display then printf "Player %c wins%s.\n" (Player.char player) (Outcome.to_phrase outcome);
     Deferred.return (player, outcome, `Moves (move_number - 1))
   | None ->
     if display then

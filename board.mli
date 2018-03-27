@@ -20,7 +20,7 @@ val add_to_point_exn : t -> player:Player.t -> position:int -> t
 
 val furthest_from_off : t -> player:Player.t -> [ `Bar | `Position of int | `Off ]
 
-val winner : t -> (Player.t * [ `Game | `Gammon | `Backgammon ]) option
+val winner : t -> (Player.t * Outcome.t) option
 
 val pip_count : t -> player:Player.t -> int
 

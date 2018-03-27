@@ -14,7 +14,7 @@ module Tree = struct
     | List of [ `To_play of Player.t ] * (float * t list) list
 end
 
-let minimax' pre_equity ~look_ahead ~to_play player board =
+let minimax' pre_equity ~look_ahead kind ~to_play player board =
   match look_ahead with
   | 0 -> 0.5
   | _ ->
@@ -47,6 +47,13 @@ let minimax' pre_equity ~look_ahead ~to_play player board =
         |> (fun setups -> if Array.is_empty setups then [| |] else pre_equity setups)
         |> Array.to_list
         |> List.zip_exn boards
+        |> List.map ~f:(fun (board, valuation) ->
+          ( board,
+            match Board.winner board with
+            | Some (winning_player, outcome) ->
+              if Bool.equal Outcome.(kind <= outcome) (Player.equal player winning_player)
+              then 1. else 0.
+            | None -> valuation))
         |> Board.Map.of_alist_reduce ~f:(fun x _ -> x))
     in
     let rec result tree =
