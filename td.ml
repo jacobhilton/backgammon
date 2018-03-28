@@ -76,43 +76,11 @@ let eval t setups =
   Array.map2_exn (Tensor.to_float_array2 outputs) transforms ~f:(fun output transform ->
     transform (Array.nget output 0))
 
-module Training_data = struct
-  module Config = struct
-    type t =
-      { replay_memory_capacity : int
-      ; train_every : int
-      ; minibatch_size : int
-      ; minibatches_number : int
-      } [@@deriving of_sexp]
-
-    let default =
-      { replay_memory_capacity = 100_000
-      ; train_every = 100
-      ; minibatch_size = 128
-      ; minibatches_number = 10_000
-      }
-  end
-
-  type t =
-    { config : Config.t
-    ; replay_memory : (([ `To_play of Player.t ] * Player.t * Board.t) * float) Replay_memory.t
-    ; mutable counter : int
-    }
-
-  let create ?(config=Config.default) () =
-    { config
-    ; replay_memory = Replay_memory.create ~capacity:config.replay_memory_capacity
-    ; counter = 0
-    }
-end
-
-let train t ~(training_data : Training_data.t) setups_and_valuations =
-  Replay_memory.enqueue training_data.replay_memory setups_and_valuations;
-  training_data.counter <- (training_data.counter + 1) % training_data.config.train_every;
-  if Int.equal training_data.counter 0 then
-    for _ = 1 to training_data.config.minibatches_number do
+let train t replay_memory ~minibatch_size ~minibatches_number =
+    for _ = 1 to minibatches_number do
       let setups, valuations =
-        Replay_memory.sample training_data.replay_memory training_data.config.minibatch_size
+        Replay_memory.sample replay_memory minibatch_size
+        |> Array.of_list
         |> Array.unzip
       in
       let inputs, transforms = tensors_and_transforms setups t.representation in
