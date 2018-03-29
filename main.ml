@@ -1,15 +1,31 @@
 open Core
 open Async
 
+module Td_config = struct
+  type t =
+    { hidden_layer_sizes : int list
+    ; representation : [ `Original | `Modified ] sexp_option
+    ; ckpt_to_load : string option
+    } [@@deriving of_sexp]
+
+  let unpack { hidden_layer_sizes; representation; ckpt_to_load } =
+    let representation = Option.value representation ~default:`Modified in
+    let td = Td.create ~hidden_layer_sizes ~representation () in
+    begin
+      match ckpt_to_load with
+      | None -> ()
+      | Some filename -> Td.load td ~filename
+    end;
+    td
+end
+
 module Game_config = struct
   type t =
     | Human
     | Pip_count_ratio of { look_ahead : int }
     | Td of
-        { look_ahead : int
-        ; hidden_layer_sizes : int list
-        ; representation : [ `Original | `Modified ] sexp_option
-        ; ckpt_to_load : string option
+        { td_config : Td_config.t
+        ; look_ahead : int
         }
     | Same
   [@@deriving of_sexp]
@@ -26,66 +42,83 @@ module Game_config = struct
       [], `Game (Game.human ~stdin)
     | Pip_count_ratio { look_ahead } ->
       [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead Game)
-    | Td { look_ahead; hidden_layer_sizes; representation; ckpt_to_load } ->
-      let representation = Option.value representation ~default:`Modified in
-      let td = Td.create ~hidden_layer_sizes ~representation () in
-      begin
-        match ckpt_to_load with
-        | None -> ()
-        | Some filename -> Td.load td ~filename
-      end;
+    | Td { look_ahead; td_config } ->
+      let td = Td_config.unpack td_config in
       [td], `Equity (Equity.minimax' (Td.eval td) ~look_ahead Game)
     | Same -> failwith "Cannot unpack Same."
+end
+
+module Replay_memory_config = struct
+  type t =
+    { capacity : int option
+    ; play_to_load : string option
+    }
+  [@@deriving of_sexp]
+
+  let unpack { capacity; play_to_load } =
+    let replay_memory = Replay_memory.create ~capacity in
+    begin
+      match play_to_load with
+      | None -> Deferred.unit
+      | Some filename ->
+        Replay_memory.load replay_memory ~filename Equity.Setup.And_valuation.t_of_sexp
+    end
+    >>| fun () ->
+    replay_memory
 end
 
 module Trainee_config = struct
   type t =
     | Td of
-        { hidden_layer_sizes : int list
-        ; representation : [ `Original | `Modified ] sexp_option
-        ; ckpt_to_load : string option
-        ; replay_memory_capacity : int sexp_option
+        { td_config : Td_config.t
+        ; replay_memory_config : Replay_memory_config.t
         }
-    | Same of { replay_memory_capacity : int sexp_option }
+    | Same of { replay_memory_config : Replay_memory_config.t }
   [@@deriving of_sexp]
 
   let flag =
     let open Command.Param in
     flag "-train" (optional (sexp_conv t_of_sexp)) ~doc:"SEXP config for trainee"
 
-  let unpack = function
-    | Td
-        { hidden_layer_sizes
-        ; representation
-        ; ckpt_to_load
-        ; replay_memory_capacity
-        } ->
-      let representation = Option.value representation ~default:`Modified in
-      let td = Td.create ~hidden_layer_sizes ~representation () in
-      begin
-        match ckpt_to_load with
-        | None -> ()
-        | Some filename -> Td.load td ~filename
-      end;
-      Some td, replay_memory_capacity
-    | Same { replay_memory_capacity } -> None, replay_memory_capacity
+  let unpack t =
+    let td_opt =
+      match t with
+      | Td { td_config; replay_memory_config = _ } -> Some (Td_config.unpack td_config)
+      | Same { replay_memory_config = _ } -> None
+    in
+    begin
+      match t with
+      | Td { td_config = _; replay_memory_config } | Same { replay_memory_config } ->
+        Replay_memory_config.unpack replay_memory_config
+    end
+    >>| fun replay_memory ->
+    td_opt, replay_memory
 end
 
 module Trainee = struct
   type t =
     { td : Td.t
-    ; replay_memory : (([ `To_play of Player.t ] * Player.t * Board.t) * float) Replay_memory.t
+    ; replay_memory : (Equity.Setup.t * float) Replay_memory.t
     }
 end
 
 let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
   Random.self_init ();
-  let setups_and_valuations = ref [] in
+  begin
+    match trainee_config with
+    | None -> Deferred.return (None, None)
+    | Some trainee_config_value ->
+      Trainee_config.unpack trainee_config_value
+      >>| fun (td_opt, replay_memory) ->
+      td_opt, Some replay_memory
+  end
+  >>= fun (trainee_td_opt, replay_memory_opt) ->
+  let valuation_count = ref 0 in
   let make_trainer =
-    Equity.mapi ~f:(fun ~to_play player board valuation ->
-      if Option.is_some trainee_config then
-        setups_and_valuations :=
-          ((`To_play to_play, player, board), valuation) :: !setups_and_valuations;
+    Equity.mapi ~f:(fun { player; to_play; board } valuation ->
+      Option.iter replay_memory_opt ~f:(fun replay_memory ->
+        Replay_memory.enqueue replay_memory ({ Equity.Setup.player; to_play; board}, valuation));
+      valuation_count := !valuation_count + 1;
       valuation)
   in
   let tds, game_how =
@@ -109,18 +142,16 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
       (tds_forwards @ tds_backwards, `Vs (game_how_forwards, game_how_backwards))
   in
   let trainee =
-    Option.map trainee_config ~f:(fun trainee_config_value ->
-      let td_opt, replay_memory_capacity = Trainee_config.unpack trainee_config_value in
+    Option.bind replay_memory_opt ~f:(fun replay_memory ->
       let td =
-        match td_opt with
+        match trainee_td_opt with
         | Some td -> td
         | None ->
           match tds with
           | [td] -> td
           | [] | _ :: _ :: _ -> failwith "Trainee must be specified explicitly."
       in
-      let replay_memory = Replay_memory.create ~capacity:replay_memory_capacity in
-      { Trainee.td; replay_memory })
+      Some { Trainee.td; replay_memory })
   in
   let game =
     match game_how with
@@ -146,7 +177,7 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
       Deferred.unit
     else
       begin
-        setups_and_valuations := [];
+        valuation_count := 0;
         Game.winner ~display ~show_pip_count game
         >>= fun (winner, outcome, `Moves number_of_moves) ->
         increment total_wins winner;
@@ -172,10 +203,7 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
         let training_text =
           match trainee with
           | None -> ""
-          | Some { td =  _; replay_memory } ->
-            Replay_memory.enqueue replay_memory !setups_and_valuations;
-            sprintf " Recording additional %i observed equity valuations."
-              (List.length !setups_and_valuations)
+          | Some _ -> sprintf " Recording additional %i observed equity valuations." !valuation_count
         in
         printf "Game %i of %i: player %c wins%s after %i plies. %s %s%s\n"
           game_number
@@ -196,7 +224,7 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
   begin
     match trainee with
     | None -> ()
-    | Some { td; replay_memory = _ } -> Td.save td ~filename:"test.ckpt"
+    | Some { td; replay_memory = _ } -> Td.save td ~filename:"test.ckpt" (* CR *)
   end;
   Deferred.unit
 

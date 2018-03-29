@@ -1,4 +1,5 @@
 open Core
+open Async
 
 module Limited = struct
   type 'a t =
@@ -20,11 +21,10 @@ module Limited = struct
       ; shuffled_items_remaining = Some []
       }
 
-  let enqueue t items =
-    List.iter items ~f:(fun item ->
-      t.newest <- (t.newest + 1) % t.capacity;
-      Array.set t.queue t.newest (Some item);
-      t.size <- Int.min (t.size + 1) t.capacity);
+  let enqueue t item =
+    t.newest <- (t.newest + 1) % t.capacity;
+    Array.set t.queue t.newest (Some item);
+    t.size <- Int.min (t.size + 1) t.capacity;
     t.shuffled_items_remaining <- None
 
   let to_list_oldest_first t =
@@ -52,10 +52,9 @@ module Unlimited = struct
     ; shuffled_items_remaining = Some []
     }
 
-  let enqueue t items =
-    List.iter items ~f:(fun item ->
-      t.queue <- item :: t.queue;
-      t.size <- t.size + 1);
+  let enqueue t item =
+    t.queue <- item :: t.queue;
+    t.size <- t.size + 1;
     t.shuffled_items_remaining <- None
 
   let to_list_oldest_first t =
@@ -95,6 +94,14 @@ let enqueue = function
 let to_list_oldest_first = function
   | Limited r -> Limited.to_list_oldest_first r
   | Unlimited r -> Unlimited.to_list_oldest_first r
+
+let save t ~filename to_sexp =
+  let sexps = List.map (to_list_oldest_first t) ~f:to_sexp in
+  Writer.save_sexps filename sexps
+
+let load t ~filename of_sexp =
+  Reader.load_sexps_exn filename of_sexp
+  >>| List.iter ~f:(enqueue t)
 
 let shuffle l =
   List.map l ~f:(fun x -> (x, Random.bits ()))

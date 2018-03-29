@@ -1,12 +1,24 @@
 open Core
 
-type t = to_play:Player.t -> Player.t -> Board.t -> float
+module Setup = struct
+  type t =
+    { player : Player.t
+    ; to_play : Player.t
+    ; board : Board.t
+    } [@@deriving sexp]
+
+  module And_valuation = struct
+    type nonrec t = t * float [@@deriving sexp]
+  end
+end
+
+type t = Setup.t -> float
 
 let create = Fn.id
 
 let eval = Fn.id
 
-let mapi t ~f ~to_play player board = f ~to_play player board (t ~to_play player board)
+let mapi t ~f input = f input (t input)
 
 module Tree = struct
   type t =
@@ -14,7 +26,7 @@ module Tree = struct
     | List of [ `To_play of Player.t ] * (float * t list) list
 end
 
-let minimax' pre_equity ~look_ahead kind ~to_play player board =
+let minimax' pre_equity ~look_ahead kind { Setup.player; to_play; board } =
   match look_ahead with
   | 0 -> 0.5
   | _ ->
@@ -42,7 +54,7 @@ let minimax' pre_equity ~look_ahead kind ~to_play player board =
     let tree = build_tree ~look_ahead ~to_play board in
     let boards_and_valuations =
       Per_player.mapi !boards_ref ~f:(fun to_play boards ->
-        List.map boards ~f:(fun board -> (`To_play to_play, player, board))
+        List.map boards ~f:(fun board -> { Setup.player; to_play; board})
         |> Array.of_list
         |> (fun setups -> if Array.is_empty setups then [| |] else pre_equity setups)
         |> Array.to_list
@@ -76,10 +88,9 @@ let minimax' pre_equity ~look_ahead kind ~to_play player board =
     result tree
 
 let minimax t =
-  minimax' (fun setups ->
-    Array.map setups ~f:(fun (`To_play to_play, player, board) -> t ~to_play player board))
+  minimax' (fun setups -> Array.map setups ~f:t)
 
-let pip_count_ratio ~to_play:_ player board =
+let pip_count_ratio { Setup.player; to_play = _; board } =
   let pip_count = Board.pip_count board ~player in
   let opponent_pip_count = Board.pip_count board ~player:(Player.flip player) in
   Float.(/) (Int.to_float opponent_pip_count) (Int.to_float (pip_count + opponent_pip_count))

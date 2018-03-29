@@ -7,11 +7,11 @@ val create
   -> unit
   -> t
 
-val eval : t -> ([ `To_play of Player.t ] * Player.t * Board.t) array -> float array
+val eval : t -> Equity.Setup.t array -> float array
 
 val train
   :  t
-  -> (([ `To_play of Player.t ] * Player.t * Board.t) * float) Replay_memory.t
+  -> (Equity.Setup.t * float) Replay_memory.t
   -> minibatch_size:int
   -> minibatches_number:int
   -> unit

@@ -1,6 +1,7 @@
 type t =
   | Forwards
   | Backwards
+[@@deriving sexp]
 
 let equal t1 t2 =
   match t1, t2 with

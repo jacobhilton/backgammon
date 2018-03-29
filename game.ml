@@ -12,7 +12,7 @@ let of_equity equity player board roll =
     Move.all_legal_turn_outcomes roll player board
     |> Set.to_list
     |> List.map ~f:(fun board ->
-      (board, Equity.eval equity ~to_play:(Player.flip player) player board))
+      (board, Equity.eval equity { Equity.Setup.player; to_play = Player.flip player; board }))
   in
   let highest_value =
     List.fold boards_with_values ~init:Float.min_value

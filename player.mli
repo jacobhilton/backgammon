@@ -1,6 +1,7 @@
 type t =
   | Forwards
   | Backwards
+[@@deriving sexp]
 
 val equal : t -> t -> bool
 
