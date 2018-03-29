@@ -102,8 +102,12 @@ module Trainee = struct
     }
 end
 
-let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
-  Random.self_init ();
+type t =
+  { game : Game.t
+  ; trainee : Trainee.t option
+  }
+
+let create ~forwards ~backwards ~trainee_config =
   begin
     match trainee_config with
     | None -> Deferred.return (None, None)
@@ -112,13 +116,11 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
       >>| fun (td_opt, replay_memory) ->
       td_opt, Some replay_memory
   end
-  >>= fun (trainee_td_opt, replay_memory_opt) ->
-  let valuation_count = ref 0 in
+  >>| fun (trainee_td_opt, replay_memory_opt) ->
   let make_trainer =
     Equity.mapi ~f:(fun { player; to_play; board } valuation ->
       Option.iter replay_memory_opt ~f:(fun replay_memory ->
         Replay_memory.enqueue replay_memory ({ Equity.Setup.player; to_play; board}, valuation));
-      valuation_count := !valuation_count + 1;
       valuation)
   in
   let tds, game_how =
@@ -166,18 +168,23 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
         | Forwards -> game_of_game_or_equity game_or_equity_forwards
         | Backwards -> game_of_game_or_equity game_or_equity_backwards))
   in
+  { game; trainee }
+
+let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
+  Random.self_init ();
+  create ~forwards ~backwards ~trainee_config
+  >>= fun { game; trainee } ->
   let total_wins = ref (Per_player.create_both 0) in
   let gammons = ref (Per_player.create_both 0) in
   let backgammons = ref (Per_player.create_both 0) in
   let increment counter player =
     counter := Per_player.replace !counter player ((Per_player.get !counter player) + 1)
   in
-  let rec run game_number =
+  let rec run game_number prev_replay_memory_enqueued =
     if Int.(game_number > games) then
       Deferred.unit
     else
       begin
-        valuation_count := 0;
         Game.winner ~display ~show_pip_count game
         >>= fun (winner, outcome, `Moves number_of_moves) ->
         increment total_wins winner;
@@ -200,10 +207,15 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
             (describe "gammon" (Per_player.get !gammons player))
             (describe "backgammon" (Per_player.get !backgammons player))
         in
-        let training_text =
-          match trainee with
+        let replay_memory_enqueued_opt =
+          Option.map trainee ~f:(fun { td = _; replay_memory } -> Replay_memory.enqueued replay_memory)
+        in
+        let replay_memory_text =
+          match replay_memory_enqueued_opt with
           | None -> ""
-          | Some _ -> sprintf " Recording additional %i observed equity valuations." !valuation_count
+          | Some replay_memory_enqueued ->
+            sprintf " Recording additional %i observed equity valuations."
+              (replay_memory_enqueued - prev_replay_memory_enqueued)
         in
         printf "Game %i of %i: player %c wins%s after %i plies. %s %s%s\n"
           game_number
@@ -213,13 +225,13 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
           number_of_moves
           (results_text Player.Backwards)
           (results_text Player.Forwards)
-          training_text;
+          replay_memory_text;
         Clock.after (sec 0.01)
         >>= fun () ->
-        run (game_number + 1)
+        run (game_number + 1) (Option.value replay_memory_enqueued_opt ~default:0)
       end
   in
-  run 1
+  run 1 0
   >>= fun () ->
   begin
     match trainee with

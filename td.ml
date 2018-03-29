@@ -77,29 +77,29 @@ let eval t setups =
     transform (Array.nget output 0))
 
 let train t replay_memory ~minibatch_size ~minibatches_number =
-    for _ = 1 to minibatches_number do
-      let setups, valuations =
-        Replay_memory.sample replay_memory minibatch_size
-        |> Array.of_list
-        |> Array.unzip
-      in
-      let inputs, transforms = tensors_and_transforms setups t.representation in
-      let transformed_valuations =
-        Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
-      in
-      let outputs = Tensor.of_float_array2 transformed_valuations Float32 in
-      let _ =
-        Session.run
-          ~inputs:
-            [ Session.Input.float t.input_placeholder inputs
-            ; Session.Input.float t.output_placeholder outputs
-            ]
-          ~targets:t.optimizer
-          ~session:t.session
-          (Session.Output.float t.loss)
-      in
-      ()
-    done
+  for _ = 1 to minibatches_number do
+    let setups, valuations =
+      Replay_memory.sample replay_memory minibatch_size
+      |> Array.of_list
+      |> Array.unzip
+    in
+    let inputs, transforms = tensors_and_transforms setups t.representation in
+    let transformed_valuations =
+      Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
+    in
+    let outputs = Tensor.of_float_array2 transformed_valuations Float32 in
+    let _ =
+      Session.run
+        ~inputs:
+          [ Session.Input.float t.input_placeholder inputs
+          ; Session.Input.float t.output_placeholder outputs
+          ]
+        ~targets:t.optimizer
+        ~session:t.session
+        (Session.Output.float t.loss)
+    in
+    ()
+  done
 
 let save t ~filename =
   Session.run

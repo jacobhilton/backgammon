@@ -1,4 +1,5 @@
-make Master module
+replay memory should use a lower-level representation to speed up training
+make way to specify what program should do easily
 print board in scrollable way, showing the same perspective when scrolling
 defaults used were: replay_memory_capacity = 100_000; train_every = 100; minibatch_size = 128; minibatches_number = 10_000
 try just using 1-ply search and updating using the best move

@@ -5,7 +5,7 @@ module Limited = struct
   type 'a t =
     { queue : 'a option array
     ; capacity : int
-    ; mutable size : int
+    ; mutable enqueued : int
     ; mutable newest : int
     ; mutable shuffled_items_remaining : 'a list option
     }
@@ -16,7 +16,7 @@ module Limited = struct
     else
       { queue = Array.create ~len:capacity None
       ; capacity
-      ; size = 0
+      ; enqueued = 0
       ; newest = capacity - 1
       ; shuffled_items_remaining = Some []
       }
@@ -24,14 +24,14 @@ module Limited = struct
   let enqueue t item =
     t.newest <- (t.newest + 1) % t.capacity;
     Array.set t.queue t.newest (Some item);
-    t.size <- Int.min (t.size + 1) t.capacity;
+    t.enqueued <- t.enqueued + 1;
     t.shuffled_items_remaining <- None
 
   let to_list_oldest_first t =
-    if Int.equal t.size 0 then [] else
+    if Int.equal t.enqueued 0 then [] else
       let pos = ref t.newest in
       let result = ref [Option.value_exn (Array.get t.queue !pos)] in
-      let oldest = if Int.(t.size < t.capacity) then 0 else (t.newest + 1) % t.capacity in
+      let oldest = if Int.(t.enqueued < t.capacity) then 0 else (t.newest + 1) % t.capacity in
       while not (Int.equal !pos oldest) do
         pos := (!pos - 1) % t.capacity;
         result := Option.value_exn (Array.get t.queue !pos) :: !result
@@ -42,19 +42,19 @@ end
 module Unlimited = struct
   type 'a t =
     { mutable queue : 'a list
-    ; mutable size : int
+    ; mutable enqueued : int
     ; mutable shuffled_items_remaining : 'a list option
     }
 
   let create () =
     { queue = []
-    ; size = 0
+    ; enqueued = 0
     ; shuffled_items_remaining = Some []
     }
 
   let enqueue t item =
     t.queue <- item :: t.queue;
-    t.size <- t.size + 1;
+    t.enqueued <- t.enqueued + 1;
     t.shuffled_items_remaining <- None
 
   let to_list_oldest_first t =
@@ -74,9 +74,13 @@ let capacity = function
   | Limited r -> Some r.capacity
   | Unlimited _ -> None
 
+let enqueued = function
+  | Limited r -> r.enqueued
+  | Unlimited r -> r.enqueued
+
 let size = function
-  | Limited r -> r.size
-  | Unlimited r -> r.size
+  | Limited r -> Int.min r.enqueued r.capacity
+  | Unlimited r -> r.enqueued
 
 let shuffled_items_remaining = function
   | Limited r -> r.shuffled_items_remaining
@@ -109,7 +113,7 @@ let shuffle l =
   |> List.map ~f:fst
 
 let rec sample t sample_size =
-  if Int.(sample_size > 0) && (Int.equal (size t) 0) then
+  if Int.(sample_size > 0) && (Int.equal (enqueued t) 0) then
     failwith "Nothing to sample."
   else
     let items =

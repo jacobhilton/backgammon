@@ -6,6 +6,8 @@ val create : capacity:int option -> _ t
 
 val capacity : _ t -> int option
 
+val enqueued : _ t -> int
+
 val size : _ t -> int
 
 val enqueue : 'a t -> 'a -> unit
