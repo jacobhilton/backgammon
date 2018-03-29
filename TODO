@@ -1,3 +1,5 @@
+make Master module
+print board in scrollable way, showing the same perspective when scrolling
 defaults used were: replay_memory_capacity = 100_000; train_every = 100; minibatch_size = 128; minibatches_number = 10_000
 try just using 1-ply search and updating using the best move
 enforce that equities are correct in winning states (at least for minimax)
@@ -6,13 +8,11 @@ gammon pip count ratio (pip count to point 6 plus 1 if nothing borne off, divide
 [Td.equity] should somehow batch tensorflow calls
 save more often, separate input/output
 two hidden layers? what sizes?
-try to improve encoding: n>=3 instead of n==3, more inputs for the bar (and off)
 train the network on p and (1-p) at the same time
 wrap the above options in a config of some sort
 rename equity to distinguish between functions and values
 report total score / gammon numbers too
 regularization?
-max experience replay saveable
 
 instead of minimax:
 - alpha-beta pruning / negascout / mcts
