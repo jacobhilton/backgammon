@@ -30,6 +30,10 @@ module Game_config = struct
     | Same
   [@@deriving of_sexp]
 
+  let is_human = function
+    | Human -> true
+    | _ -> false
+
   let flag player =
     let c = Player.char player in
     let open Command.Param in
@@ -39,7 +43,7 @@ module Game_config = struct
   let unpack = function
     | Human ->
       let stdin = Lazy.force Reader.stdin in
-      [], `Game (Game.human ~stdin)
+      [], `Game (Game.human ~stdin ())
     | Pip_count_ratio { look_ahead } ->
       [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead Game)
     | Td { look_ahead; td_config } ->
@@ -102,12 +106,33 @@ module Trainee = struct
     }
 end
 
+module Instructions = struct
+  module Single = struct
+    type t =
+      | Games of int
+      | Train of { minibatch_size : int; minibatches_number: int }
+      | Save_ckpt of string
+      | Save_play of string
+    [@@deriving sexp]
+  end
+
+  type t = Single.t list [@@deriving sexp]
+
+  let flag =
+    let open Command.Param in
+    flag "-instructions" (optional_with_default [Single.Games 1] (sexp_conv t_of_sexp))
+      ~doc:"SEXP instructions for playing games and training\ndefault: play one game"
+end
+
 type t =
   { game : Game.t
   ; trainee : Trainee.t option
+  ; instructions : Instructions.t
+  ; display : bool
+  ; show_pip_count : bool
   }
 
-let create ~forwards ~backwards ~trainee_config =
+let create ~forwards ~backwards ~trainee_config ~instructions ~display_override ~show_pip_count =
   let tds, game_how =
     match forwards, backwards with
     | Game_config.Same, Game_config.Same ->
@@ -160,20 +185,18 @@ let create ~forwards ~backwards ~trainee_config =
         | Forwards -> game_of_game_or_equity game_or_equity_forwards
         | Backwards -> game_of_game_or_equity game_or_equity_backwards))
   in
-  { game; trainee }
+  let display = Game_config.is_human forwards || Game_config.is_human backwards || display_override in
+  { game; trainee; instructions; display; show_pip_count }
 
-let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
-  Random.self_init ();
-  create ~forwards ~backwards ~trainee_config
-  >>= fun { game; trainee } ->
+let play_games { game; trainee; instructions = _; display; show_pip_count } number_of_games =
   let total_wins = ref (Per_player.create_both 0) in
   let gammons = ref (Per_player.create_both 0) in
   let backgammons = ref (Per_player.create_both 0) in
   let increment counter player =
     counter := Per_player.replace !counter player ((Per_player.get !counter player) + 1)
   in
-  let rec run game_number prev_replay_memory_enqueued =
-    if Int.(game_number > games) then
+  let rec play game_number prev_replay_memory_enqueued =
+    if Int.(game_number > number_of_games) then
       Deferred.unit
     else
       begin
@@ -209,9 +232,9 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
             sprintf " Recording additional %i observed equity valuations."
               (replay_memory_enqueued - prev_replay_memory_enqueued)
         in
-        printf "Game %i of %i: player %c wins%s after %i plies. %s %s%s\n"
+        printf "Game %i of %i: player %c wins%s after %i moves. %s %s%s\n"
           game_number
-          games
+          number_of_games
           (Player.char winner)
           outcome_text
           number_of_moves
@@ -220,32 +243,45 @@ let main ~forwards ~backwards ~trainee_config ~games ~display ~show_pip_count =
           replay_memory_text;
         Clock.after (sec 0.01)
         >>= fun () ->
-        run (game_number + 1) (Option.value replay_memory_enqueued_opt ~default:0)
+        play (game_number + 1) (Option.value replay_memory_enqueued_opt ~default:0)
       end
   in
-  run 1 0
-  >>= fun () ->
-  begin
-    match trainee with
-    | None -> ()
-    | Some { td; replay_memory = _ } -> Td.save td ~filename:"test.ckpt" (* CR *)
-  end;
-  Deferred.unit
+  play 1 0
+
+let main t =
+  Deferred.List.iter t.instructions ~f:(fun instruction ->
+    let get_trainee () = Option.value t.trainee ~default:(failwith "No trainee specified.") in
+    match instruction with
+    | Games number_of_games -> play_games t number_of_games
+    | Train { minibatch_size; minibatches_number } ->
+      let { Trainee.td; replay_memory } = get_trainee () in
+      printf "Training for %i minibatches of size %i" minibatches_number minibatch_size;
+      Td.train td replay_memory ~minibatch_size ~minibatches_number;
+      Deferred.unit
+    | Save_ckpt ckpt_to_save ->
+      let { Trainee.td; replay_memory = _ } = get_trainee () in
+      Td.save td ~filename:ckpt_to_save;
+      Deferred.unit
+    | Save_play play_to_save ->
+      let { Trainee.td = _; replay_memory } = get_trainee () in
+      Replay_memory.save replay_memory ~filename:play_to_save Td.Setup.And_valuation.sexp_of_t)
 
 let () =
   let open Command.Let_syntax in
   Command.async'
     ~summary:"backgammon"
     [%map_open
-      let games =
-        flag "-games" (optional_with_default 1 int) ~doc:"N number of games to play\ndefault: 1"
-      and forwards = Game_config.flag Player.Forwards
+      let forwards = Game_config.flag Player.Forwards
       and backwards = Game_config.flag Player.Backwards
       and trainee_config = Trainee_config.flag
-      and display = flag "-show-boards" no_arg ~doc:" display boards"
+      and instructions = Instructions.flag
+      and display_override =
+        flag "-show-boards" no_arg ~doc:" display boards even if no humans are playing"
       and show_pip_count = flag "-show-pip-count" no_arg ~doc:" display pip count on boards"
       in
       fun () ->
-        main ~games ~forwards ~backwards ~trainee_config ~display ~show_pip_count
+        Random.self_init ();
+        create ~forwards ~backwards ~trainee_config ~instructions ~display_override ~show_pip_count
+        >>= main
     ]
   |> Command.run
