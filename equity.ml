@@ -5,11 +5,7 @@ module Setup = struct
     { player : Player.t
     ; to_play : Player.t
     ; board : Board.t
-    } [@@deriving sexp]
-
-  module And_valuation = struct
-    type nonrec t = t * float [@@deriving sexp]
-  end
+    }
 end
 
 type t = Setup.t -> float

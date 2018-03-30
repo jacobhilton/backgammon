@@ -61,7 +61,7 @@ module Replay_memory_config = struct
       match play_to_load with
       | None -> Deferred.unit
       | Some filename ->
-        Replay_memory.load replay_memory ~filename Equity.Setup.And_valuation.t_of_sexp
+        Replay_memory.load replay_memory ~filename Td.Setup.And_valuation.t_of_sexp
     end
     >>| fun () ->
     replay_memory
@@ -98,7 +98,7 @@ end
 module Trainee = struct
   type t =
     { td : Td.t
-    ; replay_memory : (Equity.Setup.t * float) Replay_memory.t
+    ; replay_memory : (Td.Setup.t * float) Replay_memory.t
     }
 end
 
@@ -108,6 +108,17 @@ type t =
   }
 
 let create ~forwards ~backwards ~trainee_config =
+  let tds, game_how =
+    match forwards, backwards with
+    | Game_config.Same, Game_config.Same ->
+      failwith "At least one player must be specified explicitly."
+    | Same, game_config | game_config, Same ->
+      Game_config.unpack game_config
+    | game_config_forwards, game_config_backwards ->
+      let tds_forwards, games_or_equities_forwards = Game_config.unpack game_config_forwards in
+      let tds_backwards, games_or_equities_backwards = Game_config.unpack game_config_backwards in
+      (tds_forwards @ tds_backwards, `Vs (games_or_equities_forwards, games_or_equities_backwards))
+  in
   begin
     match trainee_config with
     | None -> Deferred.return (None, None)
@@ -117,32 +128,6 @@ let create ~forwards ~backwards ~trainee_config =
       td_opt, Some replay_memory
   end
   >>| fun (trainee_td_opt, replay_memory_opt) ->
-  let make_trainer =
-    Equity.mapi ~f:(fun { player; to_play; board } valuation ->
-      Option.iter replay_memory_opt ~f:(fun replay_memory ->
-        Replay_memory.enqueue replay_memory ({ Equity.Setup.player; to_play; board}, valuation));
-      valuation)
-  in
-  let tds, game_how =
-    let unpack_and_make_trainer game_config =
-      let tds, game_or_equity = Game_config.unpack game_config in
-      let game_how =
-        match game_or_equity with
-        | `Game game -> `Game game
-        | `Equity equity -> `Equity (make_trainer equity)
-      in
-      (tds, game_how)
-    in
-    match forwards, backwards with
-    | Game_config.Same, Game_config.Same ->
-      failwith "At least one player must be specified explicitly."
-    | Same, game_config | game_config, Same ->
-      unpack_and_make_trainer game_config
-    | game_config_forwards, game_config_backwards ->
-      let tds_forwards, game_how_forwards = unpack_and_make_trainer game_config_forwards in
-      let tds_backwards, game_how_backwards = unpack_and_make_trainer game_config_backwards in
-      (tds_forwards @ tds_backwards, `Vs (game_how_forwards, game_how_backwards))
-  in
   let trainee =
     Option.bind replay_memory_opt ~f:(fun replay_memory ->
       let td =
@@ -155,14 +140,21 @@ let create ~forwards ~backwards ~trainee_config =
       in
       Some { Trainee.td; replay_memory })
   in
+  let make_trainer =
+    Equity.mapi ~f:(fun { player; to_play; board } valuation ->
+      Option.iter trainee ~f:(fun { td; replay_memory } ->
+        Replay_memory.enqueue replay_memory
+          (Td.Setup.create { Equity.Setup.player; to_play; board} (Td.representation td), valuation));
+      valuation)
+  in
   let game =
     match game_how with
     | `Game game -> game
-    | `Equity equity -> Game.of_equity equity
+    | `Equity equity -> Game.of_equity (make_trainer equity)
     | `Vs (game_or_equity_forwards, game_or_equity_backwards) ->
       let game_of_game_or_equity = function
         | `Game game -> game
-        | `Equity equity -> Game.of_equity equity
+        | `Equity equity -> Game.of_equity (make_trainer equity)
       in
       Game.vs (Per_player.create (function
         | Forwards -> game_of_game_or_equity game_or_equity_forwards

@@ -55,44 +55,62 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   ; optimizer
   }
 
-let tensors_and_transforms setups version =
-  let inputs, transforms =
-    Array.map setups ~f:(fun { Equity.Setup.player; to_play; board } ->
-      ( Board.to_representation board version ~to_play
-      , if Player.equal to_play player then Fn.id else fun x -> Float.(1. - x)
-      ))
+let representation t = t.representation
+
+module Setup = struct
+  type t =
+    { board : float array
+    ; sign : float
+    } [@@deriving sexp]
+
+  let create { Equity.Setup.player; to_play; board } version =
+    { board = Board.to_representation board version ~to_play
+    ; sign = if Player.equal to_play player then 1. else -1.
+    }
+
+  let modifier ~sign valuation =
+    Float.(+) 0.5 (Float.( * ) Float.(valuation - 0.5) sign)
+
+  module And_valuation = struct
+    type nonrec t = t * float [@@deriving sexp]
+  end
+end
+
+let eval t equity_setups =
+  let inputs, signs =
+    Array.map equity_setups ~f:(fun equity_setup ->
+      let { Setup.board; sign } = Setup.create equity_setup t.representation in
+      (board, sign))
     |> Array.unzip
   in
-  (Tensor.of_float_array2 inputs Float32, transforms)
-
-let eval t setups =
-  let inputs, transforms = tensors_and_transforms setups t.representation in
-  let outputs =
+  let output_tensors =
     Session.run
-      ~inputs:[Session.Input.float t.input_placeholder inputs]
+      ~inputs:[Session.Input.float t.input_placeholder (Tensor.of_float_array2 inputs Float32)]
       ~session:t.session
       (Session.Output.float t.model)
   in
-  Array.map2_exn (Tensor.to_float_array2 outputs) transforms ~f:(fun output transform ->
-    transform (Array.nget output 0))
+  Array.map2_exn (Tensor.to_float_array2 output_tensors) signs
+    ~f:(fun output sign -> Setup.modifier ~sign (Array.nget output 0))
 
 let train t replay_memory ~minibatch_size ~minibatches_number =
   for _ = 1 to minibatches_number do
-    let setups, valuations =
+    let (inputs, signs), valuations =
       Replay_memory.sample replay_memory minibatch_size
+      |> List.map ~f:(fun ({ Setup.board; sign }, valuation) -> ((board, sign), valuation))
       |> Array.of_list
       |> Array.unzip
+      |> (fun (x, y) -> (Array.unzip x, y))
     in
-    let inputs, transforms = tensors_and_transforms setups t.representation in
-    let transformed_valuations =
-      Array.map2_exn valuations transforms ~f:(fun valuation transform -> [| transform valuation |])
+    let input_tensors =  Tensor.of_float_array2 inputs Float32 in
+    let modified_valuations =
+      Array.map2_exn valuations signs ~f:(fun valuation sign -> [| Setup.modifier ~sign valuation |])
     in
-    let outputs = Tensor.of_float_array2 transformed_valuations Float32 in
+    let output_tensors = Tensor.of_float_array2 modified_valuations Float32 in
     let _ =
       Session.run
         ~inputs:
-          [ Session.Input.float t.input_placeholder inputs
-          ; Session.Input.float t.output_placeholder outputs
+          [ Session.Input.float t.input_placeholder input_tensors
+          ; Session.Input.float t.output_placeholder output_tensors
           ]
         ~targets:t.optimizer
         ~session:t.session

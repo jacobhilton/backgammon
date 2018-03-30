@@ -3,11 +3,7 @@ module Setup : sig
     { player : Player.t
     ; to_play : Player.t
     ; board : Board.t
-    } [@@deriving sexp]
-
-  module And_valuation : sig
-    type nonrec t = t * float [@@deriving sexp]
-  end
+    }
 end
 
 type t

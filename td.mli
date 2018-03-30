@@ -7,11 +7,23 @@ val create
   -> unit
   -> t
 
+val representation : t -> [ `Original | `Modified ]
+
 val eval : t -> Equity.Setup.t array -> float array
+
+module Setup : sig
+  type t [@@deriving sexp]
+
+  val create : Equity.Setup.t -> [ `Original | `Modified ] -> t
+
+  module And_valuation : sig
+    type nonrec t = t * float [@@deriving sexp]
+  end
+end
 
 val train
   :  t
-  -> (Equity.Setup.t * float) Replay_memory.t
+  -> (Setup.t * float) Replay_memory.t
   -> minibatch_size:int
   -> minibatches_number:int
   -> unit
