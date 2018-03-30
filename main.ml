@@ -223,25 +223,24 @@ let play_games { game; trainee; instructions = _; display; show_pip_count } numb
             (describe "gammon" (Per_player.get !gammons player))
             (describe "backgammon" (Per_player.get !backgammons player))
         in
-        let replay_memory_enqueued_opt =
-          Option.map trainee ~f:(fun { td = _; replay_memory } -> Replay_memory.enqueued replay_memory)
-        in
-        let replay_memory_text =
-          match replay_memory_enqueued_opt with
-          | None -> ""
-          | Some replay_memory_enqueued ->
-            sprintf " Recording additional %i observed equity valuations."
-              (replay_memory_enqueued - prev_replay_memory_enqueued)
-        in
-        printf "Game %i of %i: player %c wins%s after %i moves. %s %s%s\n"
+        printf "Game %i of %i: player %c wins%s after %i moves. %s %s\n"
           game_number
           number_of_games
           (Player.char winner)
           outcome_text
           number_of_moves
           (results_text Player.Backwards)
-          (results_text Player.Forwards)
-          replay_memory_text;
+          (results_text Player.Forwards);
+        let replay_memory_enqueued_opt =
+          Option.map trainee ~f:(fun { td = _; replay_memory } -> Replay_memory.enqueued replay_memory)
+        in
+        begin
+          match replay_memory_enqueued_opt with
+          | None -> ()
+          | Some replay_memory_enqueued ->
+            printf "Recording an additional %i equity valuations.\n"
+              (replay_memory_enqueued - prev_replay_memory_enqueued)
+        end;
         Clock.after (sec 0.01)
         >>= fun () ->
         play (game_number + 1) (Option.value replay_memory_enqueued_opt ~default:0)
@@ -267,14 +266,14 @@ let main t =
       replace_hashes_with_repetitions s_new repetitions_remaining
   in
   let rec handle_instructions instructions repetitions =
-    Deferred.List.iter instructions ~f:(fun instruction ->
+    Deferred.List.iter instructions ~how:`Sequential ~f:(fun instruction ->
       match instruction with
       | Instructions.Single.Games number_of_games ->
-        printf "Starting match of %i games.\n" number_of_games;
+        printf "Playing a sequence of %i games.\n" number_of_games;
         play_games t number_of_games
       | Train { minibatch_size; minibatches_number } ->
         let { Trainee.td; replay_memory } = get_trainee () in
-        printf "Training for %i minibatches of size %i.\n" minibatches_number minibatch_size;
+        printf "Training on %i minibatches of size %i.\n" minibatches_number minibatch_size;
         Td.train td replay_memory ~minibatch_size ~minibatches_number;
         Deferred.unit
       | Save_ckpt ckpt_to_save ->
@@ -285,7 +284,7 @@ let main t =
         Deferred.unit
       | Save_play play_to_save ->
         let filename = replace_hashes_with_repetitions play_to_save repetitions in
-        printf "Saving replay memory to %s.\n" filename;
+        printf "Saving record of equity valuations to %s.\n" filename;
         let { Trainee.td = _; replay_memory } = get_trainee () in
         Replay_memory.save replay_memory ~filename Td.Setup.And_valuation.sexp_of_t
       | Repeat (number_of_times, inner_instructions) ->
