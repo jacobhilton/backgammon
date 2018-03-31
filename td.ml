@@ -23,7 +23,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let output_size = 1 in
   let session = Session.create () in
   let type_ = Node.Type.Float in
-  let input_placeholder = Ops.placeholder ~type_ [1; input_size] in
+  let input_placeholder = Ops.placeholder ~type_ [-1; input_size] in
   let layer_size_pairs =
     List.zip_exn (input_size :: hidden_layer_sizes) (hidden_layer_sizes @ [output_size])
   in
@@ -37,13 +37,15 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
         , label "connected" connected_var :: label "bias" bias_var :: vars_so_far
         ))
   in
-  let output_placeholder = Ops.placeholder ~type_ [output_size] in
+  let output_placeholder = Ops.placeholder ~type_ [-1; output_size] in
   let output_node = Ops.Placeholder.to_node output_placeholder in
-  let one = Var.f_or_d [output_size] 1. ~type_ in
+  let one = Ops.f_or_d ~shape:[-1; output_size] ~type_ 1. in
   let loss =
-    Ops.(neg (reduce_mean (output_node * log model + (one - output_node) * log (one - model))))
+    Ops.(neg (output_node * log model + (one - output_node) * log (one - model)))
+    |> Ops.reduce_sum ~dims:[1]
+    |> Ops.reduce_mean ~dims:[0]
   in
-  let optimizer = Optimizers.adam_minimizer ~learning_rate:(Var.f_or_d [] 0.001 ~type_) loss in
+  let optimizer = Optimizers.adam_minimizer ~learning_rate:(Ops.f_or_d ~shape:[] ~type_ 0.001) loss in
   { representation
   ; session
   ; type_
@@ -77,40 +79,39 @@ module Setup = struct
 end
 
 let eval t equity_setups =
-  let inputs, signs =
+  let boards, signs =
     Array.map equity_setups ~f:(fun equity_setup ->
       let { Setup.board; sign } = Setup.create equity_setup t.representation in
       (board, sign))
     |> Array.unzip
   in
-  let output_tensors =
+  let valuations =
     Session.run
-      ~inputs:[Session.Input.float t.input_placeholder (Tensor.of_float_array2 inputs Float32)]
+      ~inputs:[Session.Input.float t.input_placeholder (Tensor.of_float_array2 boards Float32)]
       ~session:t.session
       (Session.Output.float t.model)
   in
-  Array.map2_exn (Tensor.to_float_array2 output_tensors) signs
-    ~f:(fun output sign -> Setup.modifier ~sign (Array.nget output 0))
+  Array.map2_exn signs (Tensor.to_float_array2 valuations)
+    ~f:(fun sign valuation -> Setup.modifier ~sign (Array.nget valuation 0))
 
 let train t replay_memory ~minibatch_size ~minibatches_number =
   for _ = 1 to minibatches_number do
-    let (inputs, signs), valuations =
+    let (boards, signs), valuations =
       Replay_memory.sample replay_memory minibatch_size
       |> List.map ~f:(fun ({ Setup.board; sign }, valuation) -> ((board, sign), valuation))
       |> Array.of_list
       |> Array.unzip
-      |> (fun (x, y) -> (Array.unzip x, y))
+      |> Tuple2.map_fst ~f:Array.unzip
     in
-    let input_tensors =  Tensor.of_float_array2 inputs Float32 in
     let modified_valuations =
-      Array.map2_exn valuations signs ~f:(fun valuation sign -> [| Setup.modifier ~sign valuation |])
+      Array.map2_exn signs valuations ~f:(fun sign valuation -> [| Setup.modifier ~sign valuation |])
     in
-    let output_tensors = Tensor.of_float_array2 modified_valuations Float32 in
     let _ =
       Session.run
         ~inputs:
-          [ Session.Input.float t.input_placeholder input_tensors
-          ; Session.Input.float t.output_placeholder output_tensors
+          [ Session.Input.float t.input_placeholder (Tensor.of_float_array2 boards Float32)
+          ; Session.Input.float t.output_placeholder
+              (Tensor.of_float_array2 modified_valuations Float32)
           ]
         ~targets:t.optimizer
         ~session:t.session

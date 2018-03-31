@@ -3,10 +3,6 @@ open Async
 
 type t = Player.t -> Board.t -> Roll.t -> history:string Per_player.t list -> Board.t Deferred.t
 
-let create = Fn.id
-
-let eval = Fn.id
-
 let of_equity equity player board roll ~history:_ =
   let boards_with_values =
     Move.all_legal_turn_outcomes roll player board
@@ -36,10 +32,10 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
   | `Eof -> human ~stdin () player board roll ~history
   | `Ok user_input ->
     let input_kind =
-      match String.to_list user_input with
+      match String.to_list (String.lowercase user_input) with
       | [] -> if Int.equal history_position 0 then `History (`Step 1) else `History `Reset
-      | 'p' :: _ | 'P' :: _ -> `History (`Step 1)
-      | 'n' :: _ | 'N' :: _ -> `History (`Step (-1))
+      | 'p' :: _ -> `History (`Step 1)
+      | 'n' :: _ -> `History (`Step (-1))
       | '?' :: _ -> `Help
       | _ -> `Move
     in
@@ -63,14 +59,14 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
       human ~history_position:new_valid_history_position ~stdin () player board roll ~history
     | `Help ->
       printf
-        "Enter the start and end positions, separated by a hyphen, \
-         of each counter you want to move.\n\
+        "Enter the start and end positions, separated by a foward slash \
+         (or any non-numeric character), of each counter you want to move.\n\
          Each position should be number from 1 to 24, \"bar\" or \"off\".\n\
          Unlike in standard notation, you should enter each counter movement individually, \
          as in these examples:\n \
-         24-18 18-13\n \
-         bar-3 13-10 13-10 8-5\n \
-         2-off 1-off\n\
+         24/18 18/13\n \
+         bar/3 13/10 13/10 8/5\n \
+         2/off 1/off\n\
          You can also navigate through past moves using:\n \
          p - show the previous move\n \
          n - show the next move\n \

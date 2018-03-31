@@ -1,0 +1,7 @@
+TD_LOOK_AHEAD=$1
+PIP_COUNT_RATIO_LOOK_AHEAD=$2
+if [ -z $PIP_COUNT_RATIO_LOOK_AHEAD ]; then PIP_COUNT_RATIO_LOOK_AHEAD=0; fi
+if [ -z $TD_LOOK_AHEAD ]; then TD_LOOK_AHEAD=1; fi
+for repetition in {1..100}; do
+    _build/default/main.exe -X "(td (td_config ((hidden_layer_sizes (40)) (ckpt_to_load (saves/pcr.${repetition}000.ckpt)))) (look_ahead ${TD_LOOK_AHEAD}))" -O "(pip_count_ratio (look_ahead ${PIP_COUNT_RATIO_LOOK_AHEAD}))" -instructions "((Games 100))"
+done

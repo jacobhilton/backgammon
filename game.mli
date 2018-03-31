@@ -2,14 +2,6 @@ open Async
 
 type t
 
-val create
-  :  (Player.t -> Board.t -> Roll.t -> history:string Per_player.t list -> Board.t Deferred.t)
-  -> t
-
-val eval
-  :  t
-  -> Player.t -> Board.t -> Roll.t -> history:string Per_player.t list -> Board.t Deferred.t
-
 val of_equity : Equity.t -> t
 
 val human : ?history_position:int -> stdin:Reader.t -> unit -> t

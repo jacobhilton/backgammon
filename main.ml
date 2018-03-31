@@ -22,6 +22,7 @@ end
 module Game_config = struct
   type t =
     | Human
+    | Random
     | Pip_count_ratio of { look_ahead : int }
     | Td of
         { td_config : Td_config.t
@@ -44,6 +45,7 @@ module Game_config = struct
     | Human ->
       let stdin = Lazy.force Reader.stdin in
       [], `Game (Game.human ~stdin ())
+    | Random -> [], `Equity (Equity.random)
     | Pip_count_ratio { look_ahead } ->
       [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead Game)
     | Td { look_ahead; td_config } ->

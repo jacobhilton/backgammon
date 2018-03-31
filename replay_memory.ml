@@ -121,15 +121,15 @@ let rec sample t sample_size =
       | Some x -> x
       | None -> shuffle (to_list_oldest_first t)
     in
-    let number_of_items = List.length items in
-    if Int.(number_of_items < sample_size) then
+    let sampled_items, unsampled_items = List.split_n items sample_size in
+    let number_of_sampled_items = List.length sampled_items in
+    if Int.(number_of_sampled_items < sample_size) then
       begin
         set_shuffled_items_remaining t None;
-        items @ (sample t Int.(sample_size - number_of_items))
+        sampled_items @ (sample t Int.(sample_size - number_of_sampled_items))
       end
     else
       begin
-        let split_items = List.split_n items sample_size in
-        set_shuffled_items_remaining t (Some (snd split_items));
-        fst split_items
+        set_shuffled_items_remaining t (Some unsampled_items);
+        sampled_items
       end

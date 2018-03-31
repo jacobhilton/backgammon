@@ -19,3 +19,5 @@ val minimax : t -> look_ahead:int -> Outcome.t -> t
 val minimax' : (Setup.t array -> float array) -> look_ahead:int -> Outcome.t -> t
 
 val pip_count_ratio : t
+
+val random : t

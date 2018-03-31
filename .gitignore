@@ -1,3 +1,4 @@
 _build/**
-ckpt/**
+saves/**
 *.ckpt
+*.play

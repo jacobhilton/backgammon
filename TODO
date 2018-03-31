@@ -1,18 +1,12 @@
-make way to specify what program should do easily
-print board in scrollable way, showing the same perspective when scrolling
-defaults used were: replay_memory_capacity = 100_000; train_every = 100; minibatch_size = 128; minibatches_number = 10_000
-try just using 1-ply search and updating using the best move
-enforce that equities are correct in winning states (at least for minimax)
-functions: play, evaluate (play against random), train (save as name_number.ckpt after every n)
-gammon pip count ratio (pip count to point 6 plus 1 if nothing borne off, divided by sum of that plus opponent ordinary pip count)
 [Td.equity] should somehow batch tensorflow calls
+regularization
+gammon pip count ratio (pip count to point 6 plus 1 if nothing borne off, divided by sum of that plus opponent ordinary pip count)
 save more often, separate input/output
+try just using 1-ply search and updating using the best move
 two hidden layers? what sizes?
-train the network on p and (1-p) at the same time
 wrap the above options in a config of some sort
 rename equity to distinguish between functions and values
 report total score / gammon numbers too
-regularization?
 
 instead of minimax:
 - alpha-beta pruning / negascout / mcts

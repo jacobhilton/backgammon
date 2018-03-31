@@ -90,3 +90,5 @@ let pip_count_ratio { Setup.player; to_play = _; board } =
   let pip_count = Board.pip_count board ~player in
   let opponent_pip_count = Board.pip_count board ~player:(Player.flip player) in
   Float.(/) (Int.to_float opponent_pip_count) (Int.to_float (pip_count + opponent_pip_count))
+
+let random _ = 0.5
