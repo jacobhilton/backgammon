@@ -262,36 +262,40 @@ let main t =
     | repetition :: repetitions_remaining ->
       let s_new =
         String.rev s
-        |> String.substr_replace_first ~pattern:"#" ~with_:(Int.to_string repetition)
+        |> String.substr_replace_first ~pattern:"#" ~with_:(String.rev (Int.to_string repetition))
         |> String.rev
       in
       replace_hashes_with_repetitions s_new repetitions_remaining
   in
   let rec handle_instructions instructions repetitions =
     Deferred.List.iter instructions ~how:`Sequential ~f:(fun instruction ->
-      match instruction with
-      | Instructions.Single.Games number_of_games ->
-        printf "Playing a sequence of %i games.\n" number_of_games;
-        play_games t number_of_games
-      | Train { minibatch_size; minibatches_number } ->
-        let { Trainee.td; replay_memory } = get_trainee () in
-        printf "Training on %i minibatches of size %i.\n" minibatches_number minibatch_size;
-        Td.train td replay_memory ~minibatch_size ~minibatches_number;
-        Deferred.unit
-      | Save_ckpt ckpt_to_save ->
-        let filename = replace_hashes_with_repetitions ckpt_to_save repetitions in
-        printf "Saving trained parameters to %s.\n" filename;
-        let { Trainee.td; replay_memory = _ } = get_trainee () in
-        Td.save td ~filename;
-        Deferred.unit
-      | Save_play play_to_save ->
-        let filename = replace_hashes_with_repetitions play_to_save repetitions in
-        printf "Saving record of equity valuations to %s.\n" filename;
-        let { Trainee.td = _; replay_memory } = get_trainee () in
-        Replay_memory.save replay_memory ~filename Td.Setup.And_valuation.sexp_of_t
-      | Repeat (number_of_times, inner_instructions) ->
-        Deferred.List.iter (List.init number_of_times ~f:((+) 1)) ~how:`Sequential ~f:(fun iteration ->
-          handle_instructions inner_instructions (iteration :: repetitions)))
+      begin
+        match instruction with
+        | Instructions.Single.Games number_of_games ->
+          printf "Playing a sequence of %i games.\n" number_of_games;
+          play_games t number_of_games
+        | Train { minibatch_size; minibatches_number } ->
+          let { Trainee.td; replay_memory } = get_trainee () in
+          printf "Training on %i minibatches of size %i.\n" minibatches_number minibatch_size;
+          Td.train td replay_memory ~minibatch_size ~minibatches_number;
+          Deferred.unit
+        | Save_ckpt ckpt_to_save ->
+          let filename = replace_hashes_with_repetitions ckpt_to_save repetitions in
+          printf "Saving trained parameters to %s.\n" filename;
+          let { Trainee.td; replay_memory = _ } = get_trainee () in
+          Td.save td ~filename;
+          Deferred.unit
+        | Save_play play_to_save ->
+          let filename = replace_hashes_with_repetitions play_to_save repetitions in
+          printf "Saving record of equity valuations to %s.\n" filename;
+          let { Trainee.td = _; replay_memory } = get_trainee () in
+          Replay_memory.save replay_memory ~filename Td.Setup.And_valuation.sexp_of_t
+        | Repeat (number_of_times, inner_instructions) ->
+          Deferred.List.iter (List.init number_of_times ~f:((+) 1)) ~how:`Sequential
+            ~f:(fun iteration -> handle_instructions inner_instructions (iteration :: repetitions))
+      end
+      >>= fun () ->
+      Clock.after (sec 0.01))
   in
   handle_instructions t.instructions []
 

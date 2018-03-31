@@ -23,7 +23,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let output_size = 1 in
   let session = Session.create () in
   let type_ = Node.Type.Float in
-  let input_placeholder = Ops.placeholder ~type_ [-1; input_size] in
+  let input_placeholder = Ops.placeholder ~type_ [1; input_size] in
   let layer_size_pairs =
     List.zip_exn (input_size :: hidden_layer_sizes) (hidden_layer_sizes @ [output_size])
   in
@@ -37,9 +37,9 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
         , label "connected" connected_var :: label "bias" bias_var :: vars_so_far
         ))
   in
-  let output_placeholder = Ops.placeholder ~type_ [-1; output_size] in
+  let output_placeholder = Ops.placeholder ~type_ [1; output_size] in
   let output_node = Ops.Placeholder.to_node output_placeholder in
-  let one = Ops.f_or_d ~shape:[-1; output_size] ~type_ 1. in
+  let one = Ops.f_or_d ~shape:[1; output_size] ~type_ 1. in
   let loss =
     Ops.(neg (output_node * log model + (one - output_node) * log (one - model)))
     |> Ops.reduce_sum ~dims:[1]
