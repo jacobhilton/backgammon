@@ -203,7 +203,7 @@ let play_games { game; trainee; instructions = _; display; show_pip_count } numb
       Deferred.unit
     else
       begin
-        Game.winner ~display ~show_pip_count game
+        Game.play ~display ~show_pip_count game
         >>= fun (winner, outcome, `Moves number_of_moves) ->
         increment total_wins winner;
         begin

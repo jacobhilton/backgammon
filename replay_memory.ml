@@ -12,7 +12,7 @@ module Limited = struct
 
   let create ~capacity =
     if Int.(capacity < 1) then
-      failwith "Cannot create Replayer with non-positive capacity."
+      failwith "Cannot create replay memory with non-positive capacity."
     else
       { queue = Array.create ~len:capacity None
       ; capacity

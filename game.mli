@@ -8,7 +8,7 @@ val human : ?history_position:int -> stdin:Reader.t -> unit -> t
 
 val vs : t Per_player.t -> t
 
-val winner
+val play
   :  ?show_pip_count:bool
   -> display:bool
   -> ?to_play:Player.t

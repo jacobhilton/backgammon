@@ -144,7 +144,7 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
 
 let vs ts player = (Per_player.get ts player) player
 
-let rec winner ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.starting) ?(history=[])
+let rec play ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.starting) ?(history=[])
     ?(move_number=1) t =
   let to_play, roll =
     match to_play_opt with
@@ -171,5 +171,5 @@ let rec winner ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.start
     in
     t to_play board roll ~history:new_history
     >>= fun new_board ->
-    winner ?show_pip_count ~display ~to_play:(Player.flip to_play) ~board:new_board
-      ~history:new_history ~move_number:(move_number + 1) t
+    play ?show_pip_count ~display ~to_play:(Player.flip to_play) ~board:new_board ~history:new_history
+      ~move_number:(move_number + 1) t
