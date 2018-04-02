@@ -45,7 +45,6 @@ PKG stdio
 PKG str
 PKG tensorflow
 PKG tensorflow.core
-PKG tensorflow.fnn
 PKG threads
 PKG threads.posix
 PKG typerep

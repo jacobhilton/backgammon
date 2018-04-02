@@ -1,5 +1,4 @@
 [Td.equity] should somehow batch tensorflow calls
-get variable batch size to work (check if it is currently already working)
 L2 regularization for non-bias weights
 for gammons and backgammons, pass an Outcome.t and a Player.t to equities and a (payoff : Outcome.t -> Player.t -> float) to games
 the network will have to have 5 ouptut nodes, unless we copy the original idea of having an input representing whose turn it is
