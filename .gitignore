@@ -2,3 +2,4 @@ _build/**
 saves/**
 *.ckpt
 *.play
+*.log
