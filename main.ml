@@ -255,7 +255,8 @@ let play_games { game; trainee; instructions = _; display; show_pip_count; aband
         play (game_number + 1) (Option.value replay_memory_enqueued_opt ~default:0)
       end
   in
-  play 1 0
+  play 1 (Option.value_map trainee ~default:0 ~f:(fun { td = _; replay_memory } ->
+    Replay_memory.enqueued replay_memory))
 
 let main t =
   let get_trainee () =
