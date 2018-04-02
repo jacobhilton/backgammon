@@ -15,5 +15,6 @@ val play
   -> ?board:Board.t
   -> ?history:string Per_player.t list
   -> ?move_number:int
+  -> ?abandon_after_move:int
   -> t
-  -> (Player.t * Outcome.t * [ `Moves of int ]) Deferred.t
+  -> ((Player.t * Outcome.t) option * [ `Moves of int ]) Deferred.t

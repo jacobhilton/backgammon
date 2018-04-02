@@ -133,9 +133,11 @@ type t =
   ; instructions : Instructions.t
   ; display : bool
   ; show_pip_count : bool
+  ; abandon_after_move : int option
   }
 
-let create ~forwards ~backwards ~trainee_config ~instructions ~display_override ~show_pip_count =
+let create ~forwards ~backwards ~trainee_config ~instructions ~display_override ~show_pip_count
+    ~abandon_after_move =
   let tds, game_how =
     match forwards, backwards with
     | Game_config.Same, Game_config.Same ->
@@ -189,9 +191,10 @@ let create ~forwards ~backwards ~trainee_config ~instructions ~display_override 
         | Backwards -> game_of_game_or_equity game_or_equity_backwards))
   in
   let display = Game_config.is_human forwards || Game_config.is_human backwards || display_override in
-  { game; trainee; instructions; display; show_pip_count }
+  { game; trainee; instructions; display; show_pip_count; abandon_after_move }
 
-let play_games { game; trainee; instructions = _; display; show_pip_count } number_of_games =
+let play_games { game; trainee; instructions = _; display; show_pip_count; abandon_after_move }
+    number_of_games =
   let total_wins = ref (Per_player.create_both 0) in
   let gammons = ref (Per_player.create_both 0) in
   let backgammons = ref (Per_player.create_both 0) in
@@ -203,16 +206,21 @@ let play_games { game; trainee; instructions = _; display; show_pip_count } numb
       Deferred.unit
     else
       begin
-        Game.play ~display ~show_pip_count game
-        >>= fun (winner, outcome, `Moves number_of_moves) ->
-        increment total_wins winner;
-        begin
-          match outcome with
-          | Outcome.Game -> ()
-          | Gammon -> increment gammons winner
-          | Backgammon -> increment backgammons winner
-        end;
-        let outcome_text = Outcome.to_phrase outcome in
+        Game.play ~display ~show_pip_count ?abandon_after_move game
+        >>= fun (winner_and_outcome, `Moves number_of_moves) ->
+        let winner_and_outcome_text =
+          match winner_and_outcome with
+          | None -> "abandoned"
+          | Some (winner, outcome) ->
+            increment total_wins winner;
+            begin
+              match outcome with
+              | Outcome.Game -> ()
+              | Gammon -> increment gammons winner
+              | Backgammon -> increment backgammons winner
+            end;
+            sprintf "player %c wins%s" (Player.char winner) (Outcome.to_phrase outcome)
+        in
         let results_text player =
           let total_wins = Per_player.get !total_wins player in
           let describe s number =
@@ -225,11 +233,10 @@ let play_games { game; trainee; instructions = _; display; show_pip_count } numb
             (describe "gammon" (Per_player.get !gammons player))
             (describe "backgammon" (Per_player.get !backgammons player))
         in
-        printf "Game %i of %i: player %c wins%s after %i moves. %s %s\n"
+        printf "Game %i of %i: %s after %i moves. %s %s\n"
           game_number
           number_of_games
-          (Player.char winner)
-          outcome_text
+          winner_and_outcome_text
           number_of_moves
           (results_text Player.Backwards)
           (results_text Player.Forwards);
@@ -311,10 +318,13 @@ let () =
       and display_override =
         flag "-show-boards" no_arg ~doc:" display boards even if no humans are playing"
       and show_pip_count = flag "-show-pip-count" no_arg ~doc:" display pip count on boards"
+      and abandon_after_move =
+        flag "-abandon-after-move" (optional int) ~doc:"N abandon games after this number of moves"
       in
       fun () ->
         Random.self_init ();
         create ~forwards ~backwards ~trainee_config ~instructions ~display_override ~show_pip_count
+          ~abandon_after_move
         >>= main
     ]
   |> Command.run

@@ -1,7 +1,8 @@
 [Td.equity] should somehow batch tensorflow calls
 get variable batch size to work (check if it is currently already working)
 regularization
-for gammons and backgammons, pass a payoff : Outcome.t -> float variable
+for gammons and backgammons, pass an Outcome.t and a Player.t to equities and a (payoff : Outcome.t -> Player.t -> float) to games
+the network will have to have 5 ouptut nodes, unless we copy the original idea of having an input representing whose turn it is
 gammon pip count ratio (pip count to point 6 plus 1 if nothing borne off, divided by sum of that plus opponent ordinary pip count)
 save more often, separate input/output
 try just using 1-ply search and updating using the best move
