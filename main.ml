@@ -134,6 +134,7 @@ type t =
   ; display : bool
   ; show_pip_count : bool
   ; abandon_after_move : int option
+  ; stdout_flushed : unit -> unit Deferred.t
   }
 
 let create ~forwards ~backwards ~trainee_config ~instructions ~display_override ~show_pip_count
@@ -191,9 +192,14 @@ let create ~forwards ~backwards ~trainee_config ~instructions ~display_override 
         | Backwards -> game_of_game_or_equity game_or_equity_backwards))
   in
   let display = Game_config.is_human forwards || Game_config.is_human backwards || display_override in
-  { game; trainee; instructions; display; show_pip_count; abandon_after_move }
+  let stdout_flushed =
+    let stdout = Lazy.force Writer.stdout in
+    fun () -> Writer.flushed stdout
+  in
+  { game; trainee; instructions; display; show_pip_count; abandon_after_move; stdout_flushed }
 
-let play_games { game; trainee; instructions = _; display; show_pip_count; abandon_after_move }
+let play_games
+    { game; trainee; instructions = _; display; show_pip_count; abandon_after_move; stdout_flushed }
     number_of_games =
   let total_wins = ref (Per_player.create_both 0) in
   let gammons = ref (Per_player.create_both 0) in
@@ -250,7 +256,7 @@ let play_games { game; trainee; instructions = _; display; show_pip_count; aband
             printf "Recording an additional %i equity valuations.\n"
               (replay_memory_enqueued - prev_replay_memory_enqueued)
         end;
-        Clock.after (sec 0.01)
+        stdout_flushed ()
         >>= fun () ->
         play (game_number + 1) (Option.value replay_memory_enqueued_opt ~default:0)
       end
@@ -303,7 +309,7 @@ let main t =
             ~f:(fun iteration -> handle_instructions inner_instructions (iteration :: repetitions))
       end
       >>= fun () ->
-      Clock.after (sec 0.01))
+      t.stdout_flushed ())
   in
   handle_instructions t.instructions []
 
