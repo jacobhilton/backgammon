@@ -36,5 +36,5 @@ else
 		-train "(same (replay_memory_config $REPLAY_MEMORY_CONFIG))"\
 		-instructions "$INSTRUCTIONS"
 	fi
-    done | tee -a "$METHOD.train.log"
+    done | tee -a "saves/$METHOD.train.log"
 fi

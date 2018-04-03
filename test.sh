@@ -17,5 +17,5 @@ else
 	    -X "(td (td_config $TD_CONFIG) (look_ahead 1))"\
 	    -O "(pip_count_ratio (look_ahead 2))"\
 	    -instructions "((Games 100))"
-    done | tee -a "$METHOD.test.log"
+    done | tee -a "saves/$METHOD.test.log"
 fi
