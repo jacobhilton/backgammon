@@ -3,7 +3,7 @@ set -e
 METHOD="$1"
 START="$2"
 END="$3"
-if [ "$METHOD" == "pcr" ] || [ "$METHOD" == "self" ] || [ "$METHOD" != "hybrid" ]; then
+if [ "$METHOD" != "pcr" ] && [ "$METHOD" != "self" ] && [ "$METHOD" != "hybrid" ]; then
     echo "Please specify the pcr, self or hybrid training method."
     exit 1
 elif [ -z "$START" ] || [ -z "$END" ]; then
@@ -27,7 +27,7 @@ else
 	    _build/default/main.exe\
 		-X "(pip_count_ratio (look_ahead 2))"\
 		-O "same"\
-		-train "(td $TD_CONFIG $REPLAY_MEMORY_CONFIG)"\
+		-train "(td (td_config $TD_CONFIG) (replay_memory_config $REPLAY_MEMORY_CONFIG))"\
 		-instructions "$INSTRUCTIONS"
 	else
 	    _build/default/main.exe\
