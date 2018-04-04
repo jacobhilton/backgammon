@@ -22,125 +22,144 @@ let of_equity equity player board roll ~history:_ =
   |> Deferred.return
 
 let rec human ?history_position:history_position_opt ~stdin () player board roll ~history =
-  let history_position = Option.value history_position_opt ~default:0 in
-  if Option.is_some history_position_opt then
-      printf "%i move%s ago:\n%s" history_position (if Int.equal history_position 1 then "" else "s")
-        (Per_player.get (List.nth_exn history history_position) player);
   printf "Your move (? for help): ";
   Reader.read_line stdin
-  >>= function
-  | `Eof -> human ~stdin () player board roll ~history
-  | `Ok user_input ->
-    let input_kind =
-      match String.to_list (String.lowercase user_input) with
-      | [] -> if Int.equal history_position 0 then `History (`Step 1) else `History `Reset
-      | 'p' :: _ -> `History (`Step 1)
-      | 'n' :: _ -> `History (`Step (-1))
-      | '?' :: _ -> `Help
-      | _ -> `Move
+  >>= fun user_input_read_result ->
+  let user_input =
+    match user_input_read_result with
+    | `Ok user_input -> user_input
+    | `Eof -> ""
+  in
+  let pair l =
+    let pairs, x_extra =
+      List.fold l ~init:([], None) ~f:(fun (acc, x_even_opt) x ->
+        match x_even_opt with
+        | None -> acc, Some x
+        | Some x_even -> (x_even, x) :: acc, None)
     in
-    match input_kind with
-    | `History action ->
-      let new_history_position =
-        match action with
-        | `Reset -> 0
-        | `Step step -> history_position + step
+    match x_extra with
+    | None -> Some (List.rev pairs)
+    | Some _ -> None
+  in
+  let moves_parsed =
+    String.lowercase user_input
+    |> String.substr_replace_all ~pattern:"bar" ~with_:" 25 "
+    |> String.substr_replace_all ~pattern:"off" ~with_:" 0 "
+    |> String.map ~f:(fun c -> if Char.is_digit c then c else ' ')
+    |> String.split ~on:' '
+    |> List.filter ~f:(fun s -> not (String.is_empty s))
+    |> List.map ~f:(fun s -> Or_error.try_with (fun () -> Int.of_string s))
+    |> Or_error.combine_errors
+    |> Or_error.bind ~f:(fun l ->
+      Result.of_option (pair l) ~error:(Error.of_string "odd number of board positions found"))
+    |> Or_error.map ~f:(List.map ~f:(fun (i, j) ->
+      Move.create (if Int.equal i 25 then `Bar else `Position i) ~distance:(i - j)))
+    |> Result.map_error ~f:(fun err ->
+      Error.of_string (sprintf "Could not parse input: %s." (Error.to_string_hum err)))
+  in
+  let moves_valid_distances =
+    Or_error.bind moves_parsed ~f:(fun moves ->
+      let legal_turn_prefixes =
+        List.map (Move.all_legal_turns roll player board) ~f:(fun (legal_turn, _) ->
+          List.init (List.length legal_turn + 1) ~f:(fun n -> List.split_n legal_turn n |> fst))
+        |> List.concat
       in
-      let new_valid_history_position =
-        if Int.(new_history_position < 0) || Int.(new_history_position > List.length history - 1) then
-          begin
-            printf "There %s move.\n"
-              (if Int.(new_history_position < 0) then "is no next" else "was no previous");
-            history_position
-          end
-        else
-          new_history_position
-      in
-      human ~history_position:new_valid_history_position ~stdin () player board roll ~history
-    | `Help ->
-      printf
-        "Enter the start and end positions, separated by a foward slash \
-         (or any non-numeric character), of each counter you want to move.\n\
-         Each position should be number from 1 to 24, \"bar\" or \"off\".\n\
-         Unlike in standard notation, you should enter each counter movement individually, \
-         as in these examples:\n \
-         24/18 18/13\n \
-         bar/3 13/10 13/10 8/5\n \
-         2/off 1/off\n\
-         You can also navigate through past moves using:\n \
-         p - show the previous move\n \
-         n - show the next move\n \
-         <enter> - toggle between showing the current and last moves\n";
-      human ~stdin () player board roll ~history
-    | `Move ->
-      let pair l =
-        let pairs, x_extra =
-          List.fold l ~init:([], None) ~f:(fun (acc, x_even_opt) x ->
-            match x_even_opt with
-            | None -> acc, Some x
-            | Some x_even -> (x_even, x) :: acc, None)
-        in
-        match x_extra with
-        | None -> Some (List.rev pairs)
-        | Some _ -> None
-      in
-      let moves_parsed =
-        String.lowercase user_input
-        |> String.substr_replace_all ~pattern:"bar" ~with_:" 25 "
-        |> String.substr_replace_all ~pattern:"off" ~with_:" 0 "
-        |> String.map ~f:(fun c -> if Char.is_digit c then c else ' ')
-        |> String.split ~on:' '
-        |> List.filter ~f:(fun s -> not (String.is_empty s))
-        |> List.map ~f:(fun s -> Or_error.try_with (fun () -> Int.of_string s))
-        |> Or_error.combine_errors
-        |> Or_error.bind ~f:(fun l ->
-          Result.of_option (pair l) ~error:(Error.of_string "odd number of board positions found"))
-        |> Or_error.map ~f:(List.map ~f:(fun (i, j) ->
-          Move.create (if Int.equal i 25 then `Bar else `Position i) ~distance:(i - j)))
-        |> Result.map_error ~f:(fun err ->
-          Error.of_string (sprintf "Could not parse input: %s." (Error.to_string_hum err)))
-      in
-      let moves_valid_distances =
-        Or_error.bind moves_parsed ~f:(fun moves ->
-          let legal_turn_prefixes =
-            List.map (Move.all_legal_turns roll player board) ~f:(fun (legal_turn, _) ->
-              List.init (List.length legal_turn + 1) ~f:(fun n -> List.split_n legal_turn n |> fst))
-            |> List.concat
+      if
+        List.exists legal_turn_prefixes ~f:(fun legal_turn_prefix ->
+          let sorted_distances l =
+            List.sort (List.map l ~f:Move.capped_distance) ~cmp:Int.compare
           in
-          if
-            List.exists legal_turn_prefixes ~f:(fun legal_turn_prefix ->
-              let sorted_distances l =
-                List.sort (List.map l ~f:Move.capped_distance) ~cmp:Int.compare
-              in
-              List.equal (sorted_distances moves) (sorted_distances legal_turn_prefix)
-                ~equal:Int.equal)
-          then
-            Ok moves
+          List.equal (sorted_distances moves) (sorted_distances legal_turn_prefix)
+            ~equal:Int.equal)
+      then
+        Ok moves
+      else
+        Or_error.error_string
+          "Illegal move: does not match the roll. \
+           If you are moving one counter more than once, \
+           please enter each counter movement individually.")
+  in
+  let moves_legal_sequence =
+    Or_error.bind moves_valid_distances ~f:(List.fold ~init:(Ok board) ~f:(fun acc move ->
+      Or_error.bind acc ~f:(fun board_so_far ->
+        let new_board_so_far = Move.execute move player board_so_far in
+        Result.map_error new_board_so_far ~f:(fun err ->
+          Error.of_string (sprintf "Illegal move: %s." (Error.to_string_hum err))))))
+  in
+  let new_board =
+    Or_error.bind moves_legal_sequence ~f:(fun new_board_maybe_illegal ->
+      if Set.mem (Move.all_legal_turn_outcomes roll player board) new_board_maybe_illegal then
+        Ok new_board_maybe_illegal
+      else
+        Or_error.error_string "Illegal move: it is possible to move more.")
+  in
+  let special_input =
+    match String.to_list (String.lowercase user_input) with
+    | [] -> `History `Reset_or_toggle
+    | 'p' :: _ -> `History (`Step 1)
+    | 'n' :: _ -> `History (`Step (-1))
+    | '?' :: _ -> `Help
+    | _ -> `Move
+  in
+  match special_input with
+  | `History action ->
+    let new_history_position_or_error =
+      match action with
+      | `Reset_or_toggle ->
+        if Int.equal (List.length history) 1 then
+          Ok 0
+        else if (Option.equal Int.equal) history_position_opt (Some 0) then
+          Ok 1
+        else
+          Ok 0
+      | `Step step ->
+        match history_position_opt with
+        | None -> Ok 0
+        | Some history_position ->
+          if Int.(history_position + step < 0) then
+            Or_error.error_string "There is no next move."
+          else if Int.(history_position + step > List.length history - 1) then
+            Or_error.error_string "There was no previous move."
           else
-            Or_error.error_string
-              "Illegal move: does not match the roll. \
-               If you are moving one counter more than once, \
-               please enter each counter movement individually.")
-      in
-      let moves_legal_sequence =
-        Or_error.bind moves_valid_distances ~f:(List.fold ~init:(Ok board) ~f:(fun acc move ->
-          Or_error.bind acc ~f:(fun board_so_far ->
-            let new_board_so_far = Move.execute move player board_so_far in
-            Result.map_error new_board_so_far ~f:(fun err ->
-              Error.of_string (sprintf "Illegal move: %s." (Error.to_string_hum err))))))
-      in
-      let new_board =
-        Or_error.bind moves_legal_sequence ~f:(fun new_board_maybe_illegal ->
-          if Set.mem (Move.all_legal_turn_outcomes roll player board) new_board_maybe_illegal then
-            Ok new_board_maybe_illegal
-          else
-            Or_error.error_string "Illegal move: it is possible to move more.")
-      in
-      match new_board with
+            Ok (history_position + step)
+    in
+    begin
+      match new_history_position_or_error with
+      | Ok new_history_position ->
+        begin
+          match List.nth history new_history_position with
+          | Some history_item ->
+            printf "%i move%s ago:\n%s" new_history_position
+              (if Int.equal new_history_position 1 then "" else "s")
+              (Per_player.get history_item player)
+          | None -> printf "No moves recorded.\n"
+        end;
+        human ~history_position:new_history_position ~stdin () player board roll ~history
       | Error err ->
         printf "%s\n" (Error.to_string_hum err);
-        human ~stdin () player board roll ~history
-      | Ok x -> Deferred.return x
+        human ?history_position:history_position_opt ~stdin () player board roll ~history
+    end
+  | `Help ->
+    printf
+      "Enter the start and end positions, separated by a foward slash \
+       (or any non-numeric character), of each counter you want to move.\n\
+       Each position should be number from 1 to 24, \"bar\" or \"off\".\n\
+       Unlike in standard notation, you should enter each counter movement individually, \
+       as in these examples:\n \
+       24/18 18/13\n \
+       bar/3 13/10 13/10 8/5\n \
+       2/off 1/off\n\
+       You can also navigate through past moves using:\n \
+       p - show the previous move\n \
+       n - show the next move\n \
+       <enter> - toggle between showing the current and last moves\n";
+    human ~stdin () player board roll ~history
+  | `Move ->
+    match new_board with
+    | Ok x -> Deferred.return x
+    | Error err ->
+      printf "%s\n" (Error.to_string_hum err);
+      human ~stdin () player board roll ~history
 
 let vs ts player = (Per_player.get ts player) player
 
