@@ -23,7 +23,7 @@ else
 	TD_CONFIG="((hidden_layer_sizes (40)) (ckpt_to_load ($CKPT_TO_LOAD)))"
 	REPLAY_MEMORY_CONFIG="((capacity (50_000)) (play_to_load ($PLAY_TO_LOAD)))"
 	INSTRUCTIONS="((games 10) (train (minibatch_size 128) (minibatches_number 500)) (save_ckpt $CKPT_TO_SAVE) (save_play $PLAY_TO_SAVE))"
-	if [ "$METHOD" == "pcr" ] || ([ "$METHOD" == "hybrid" ] && [ "$PLAYED" -lt 1000 ]); then
+	if [ "$METHOD" == "pcr" ] || ([ "$METHOD" == "hybrid" ] && [ "$PLAYED" -lt 500 ]); then
 	    _build/default/main.exe\
 		-X "(pip_count_ratio (look_ahead 2))"\
 		-O "same"\
