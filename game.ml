@@ -18,6 +18,15 @@ let of_equity equity player board roll ~history:_ =
     List.filter_map boards_with_values ~f:(fun (board, value) ->
       if Float.equal value highest_value then Some board else None)
   in
+  if List.is_empty highest_value_boards then
+    failwithf
+      "Unexpectedly found no highest value board for roll %s, player %c and board as follows.\n%s\n\n\
+       The boards with values were as follows.\n%s\n"
+      (Roll.to_string roll)
+      (Player.char player)
+      (Board.to_ascii board)
+      (Sexp.to_string ([%sexp_of:(Board.t * float) list] boards_with_values))
+      ();
   List.nth_exn highest_value_boards (Random.int (List.length highest_value_boards))
   |> Deferred.return
 
