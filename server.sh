@@ -1,7 +1,10 @@
 #!/bin/bash
 {
-set -euo pipefail
-DIR="${HOME}/backgammon_server"
+set -eo pipefail
+export LIBRARY_PATH=~/libtensorflow/lib:$LIBRARY_PATH
+export LD_LIBRARY_PATH=~/libtensorflow/lib:$LD_LIBRARY_PATH
+set -u
+DIR=~/backgammon_server
 if ! [[ -p "${DIR}/stdin.fifo" ]]; then
     mkfifo "${DIR}/stdin.fifo"
 fi
