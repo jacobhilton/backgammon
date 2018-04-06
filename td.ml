@@ -27,22 +27,33 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let layer_size_pairs =
     List.zip_exn (input_size :: hidden_layer_sizes) (hidden_layer_sizes @ [output_size])
   in
-  let model, vars =
-    List.foldi layer_size_pairs ~init:(Ops.Placeholder.to_node input_placeholder, [])
-      ~f:(fun i (node_so_far, vars_so_far) (size_from, size_to) ->
+  let model, vars, connected_vars =
+    List.foldi layer_size_pairs ~init:(Ops.Placeholder.to_node input_placeholder, [], [])
+      ~f:(fun i (node_so_far, vars_so_far, connected_vars_so_far) (size_from, size_to) ->
         let bias_var = Var.f_or_d [1; size_to] 0. ~type_ in
         let connected_var = Var.normal [size_from; size_to] ~stddev:epsilon_init ~type_ in
         let label s var = (sprintf "%s_%i" s i, Node.P var) in
         ( Ops.(sigmoid ((node_so_far *^ connected_var) + bias_var))
         , label "connected" connected_var :: label "bias" bias_var :: vars_so_far
+        , connected_var :: connected_vars_so_far
         ))
   in
   let output_placeholder = Ops.placeholder ~type_ [1; output_size] in
   let output_node = Ops.Placeholder.to_node output_placeholder in
   let one = Ops.f_or_d ~shape:[1; output_size] ~type_ 1. in
-  let loss =
+  let unregularised_loss =
     Ops.(neg (output_node * log model + (one - output_node) * log (one - model)))
     |> Ops.reduce_sum ~dims:[1]
+  in
+  let regularisation =
+    List.map connected_vars ~f:(fun connected_var ->
+      Ops.reshape connected_var (Ops.ci32 ~shape:[1] [-1]))
+    |> Ops.concat (Ops.ci32 ~shape:[] [0])
+    |> Ops.reduce_mean ~dims:[0]
+    |> Ops.( * ) (Ops.f_or_d ~shape:[1] ~type_ 0.000001)
+  in
+  let loss =
+    Ops.(unregularised_loss + regularisation)
     |> Ops.reduce_mean ~dims:[0]
   in
   let optimizer = Optimizers.adam_minimizer ~learning_rate:(Ops.f_or_d ~shape:[] ~type_ 0.001) loss in

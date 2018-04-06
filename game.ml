@@ -33,7 +33,7 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
   let user_input =
     match user_input_read_result with
     | `Ok user_input -> user_input
-    | `Eof -> ""
+    | `Eof -> failwith "Game terminated by user."
   in
   let pair l =
     let pairs, x_extra =

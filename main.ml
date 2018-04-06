@@ -286,7 +286,8 @@ let main t =
       begin
         match instruction with
         | Instructions.Single.Games number_of_games ->
-          printf "Playing a sequence of %i games.\n" number_of_games;
+          printf "Playing %i game%s.\n" number_of_games
+            (if Int.equal number_of_games 1 then "" else "s");
           play_games t number_of_games
         | Train { minibatch_size; minibatches_number } ->
           let { Trainee.td; replay_memory } = get_trainee () in
