@@ -4,30 +4,26 @@ open Async
 type t = Player.t -> Board.t -> Roll.t -> history:string Per_player.t list -> Board.t Deferred.t
 
 let of_equity equity player board roll ~history:_ =
-  let boards_with_values =
+  let boards_with_valuations =
     Move.all_legal_turn_outcomes roll player board
     |> Set.to_list
     |> List.map ~f:(fun board ->
-      (board, Equity.eval equity { Equity.Setup.player; to_play = Player.flip player; board }))
+      let valuation =
+        Equity.eval equity { Equity.Setup.player; to_play = Player.flip player; board }
+      in
+      if not (Float.is_finite valuation) then
+        failwithf "Equity valuation %f encountered." valuation ();
+      (board, valuation))
   in
-  let highest_value =
-    List.fold boards_with_values ~init:Float.min_value
-      ~f:(fun acc (_, value) -> Float.max acc value)
+  let highest_valuation =
+    List.fold boards_with_valuations ~init:Float.min_value
+      ~f:(fun acc (_, valuation) -> Float.max acc valuation)
   in
-  let highest_value_boards =
-    List.filter_map boards_with_values ~f:(fun (board, value) ->
-      if Float.equal value highest_value then Some board else None)
+  let highest_valuation_boards =
+    List.filter_map boards_with_valuations ~f:(fun (board, valuation) ->
+      if Float.equal valuation highest_valuation then Some board else None)
   in
-  if List.is_empty highest_value_boards then
-    failwithf
-      "Unexpectedly found no highest value board for roll %s, player %c and board as follows.\n%s\n\n\
-       The boards with values were as follows.\n%s\n"
-      (Roll.to_string roll)
-      (Player.char player)
-      (Board.to_ascii board)
-      (Sexp.to_string ([%sexp_of:(Board.t * float) list] boards_with_values))
-      ();
-  List.nth_exn highest_value_boards (Random.int (List.length highest_value_boards))
+  List.nth_exn highest_valuation_boards (Random.int (List.length highest_valuation_boards))
   |> Deferred.return
 
 let rec human ?history_position:history_position_opt ~stdin () player board roll ~history =
