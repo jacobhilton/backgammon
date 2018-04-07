@@ -1,14 +1,12 @@
-[Td.equity] should somehow batch tensorflow calls
+debug nan issues
 for gammons and backgammons, pass an Outcome.t and a Player.t to equities and a (payoff : Outcome.t -> Player.t -> float) to games
-the network will have to have 5 ouptut nodes, unless we copy the original idea of having an input representing whose turn it is (or ignore backgammons)
+give the network 3 output nodes (probably ignore backgammons)
+for a gammon pip count ratio, use pip count to point 6 plus 1 if nothing borne off, divided by sum of that plus opponent ordinary pip count
 both calls to [Session.run] in td.ml appear to have some kind of memory leak
-gammon pip count ratio (pip count to point 6 plus 1 if nothing borne off, divided by sum of that plus opponent ordinary pip count)
-try just using 1-ply search and updating using the best move
-two hidden layers? what sizes?
-wrap the above options in a config of some sort
-rename equity to distinguish between functions and values
-report total score / gammon numbers too
-
+try with hidden_layer_sizes 100, 100 (say)
+try relu activation
+consider batching tensorflow calls in minimax
+consider just using 1-ply search and updating using the best move
 instead of minimax:
 - alpha-beta pruning / negascout / mcts
 - transposition table
@@ -16,7 +14,7 @@ instead of minimax:
   rolls
 - probability of move has something to do with stability of likelihood of winning as well as the
   likelihood itself?
-
-http://www.bkgm.com/articles/ZadehKobliska/OnOptimalDoublingInBackgammon/index.html
-https://www.cs.cornell.edu/boom/2001sp/Tsinteris/gammon.htm
-http://www.scholarpedia.org/article/User:Gerald_Tesauro/Proposed/Td-gammon
+references:
+- http://www.bkgm.com/articles/ZadehKobliska/OnOptimalDoublingInBackgammon/index.html
+- https://www.cs.cornell.edu/boom/2001sp/Tsinteris/gammon.htm
+- http://www.scholarpedia.org/article/User:Gerald_Tesauro/Proposed/Td-gammon
