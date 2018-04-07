@@ -10,7 +10,7 @@ type t =
   ; vars : (string * [ `float ] Node.t) list
   ; model : [ `float ] Node.t
   ; output_placeholder : [ `float ] Ops.Placeholder.t
-  ; loss : [ `float ] Node.t
+  ; check : [ `float ] Node.t
   ; optimizer : Node.p list
   }
 
@@ -27,16 +27,20 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let layer_size_pairs =
     List.zip_exn (input_size :: hidden_layer_sizes) (hidden_layer_sizes @ [output_size])
   in
-  let model, vars, connected_vars =
-    List.foldi layer_size_pairs ~init:(Ops.Placeholder.to_node input_placeholder, [], [])
-      ~f:(fun i (node_so_far, vars_so_far, connected_vars_so_far) (size_from, size_to) ->
+  let model, connected_vars, labelled_vars, checked_vars =
+    List.foldi layer_size_pairs ~init:(Ops.Placeholder.to_node input_placeholder, [], [], [])
+      ~f:(fun i (node_so_far, connected_vars_so_far, labelled_vars_so_far, checked_vars_so_far)
+           (size_from, size_to) ->
         let bias_var = Var.f_or_d [1; size_to] 0. ~type_ in
         let connected_var = Var.normal [size_from; size_to] ~stddev:epsilon_init ~type_ in
-        let check s var = Ops.checkNumerics ~message:(sprintf "Non-finite %s_%i variable." s i) var in
+        let check s var =
+          `Checked (Ops.checkNumerics ~message:(sprintf "Non-finite %s_%i variable." s i) var)
+        in
         let label s var = (sprintf "%s_%i" s i, var) in
-        ( Ops.(sigmoid ((node_so_far *^ check "connected" connected_var) + check "bias" bias_var))
-        , label "connected" connected_var :: label "bias" bias_var :: vars_so_far
+        ( Ops.(sigmoid ((node_so_far *^ connected_var) + bias_var))
         , connected_var :: connected_vars_so_far
+        , label "connected" connected_var :: label "bias" bias_var :: labelled_vars_so_far
+        , check "connected" connected_var :: check "bias" bias_var :: checked_vars_so_far
         ))
   in
   let output_placeholder = Ops.placeholder ~type_ [1; output_size] in
@@ -56,20 +60,26 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let loss =
     Ops.(unregularised_loss + regularisation)
     |> Ops.reduce_mean ~dims:[0]
-    |> Ops.checkNumerics ~message:"Non-finite loss."
   in
   let optimizer =
     Optimizers.adam_minimizer ~learning_rate:(Ops.f_or_d ~shape:[] ~type_ 0.001) loss
+  in
+  let checks =
+    `Checked (Ops.checkNumerics loss ~message:"Non-finite loss.") :: checked_vars
+  in
+  let check =
+    List.map checks ~f:(fun (`Checked node) -> Ops.reshape node (Ops.ci32 ~shape:[1] [-1]))
+    |> Ops.concat (Ops.ci32 ~shape:[] [0])
   in
   { representation
   ; session
   ; type_
   ; input_placeholder
-  ; vars = List.rev vars
+  ; vars = List.rev labelled_vars
   ; model
   ; output_placeholder
-  ; loss
   ; optimizer
+  ; check
   }
 
 let representation t = t.representation
@@ -130,7 +140,7 @@ let train t replay_memory ~minibatch_size ~minibatches_number =
           ]
         ~targets:t.optimizer
         ~session:t.session
-        (Session.Output.float t.loss)
+        (Session.Output.float t.check)
     in
     ()
   done
