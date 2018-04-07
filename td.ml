@@ -45,7 +45,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let output_node = Ops.Placeholder.to_node output_placeholder in
   let sigmoid_cross_entropy_with_logits ~labels ~logits =
     let c f = Ops.f_or_d ~shape:[1; output_size] ~type_ f in
-    Ops.(maximum logits (c 0.) - logits * labels + log (c 1. + exp (c 0. - abs logits)))
+    Ops.(relu logits - logits * labels + log (c 1. + exp (c 0. - abs logits)))
   in
   let unregularised_loss =
     sigmoid_cross_entropy_with_logits ~labels:output_node ~logits
