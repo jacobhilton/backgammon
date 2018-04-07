@@ -32,8 +32,9 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
       ~f:(fun i (node_so_far, vars_so_far, connected_vars_so_far) (size_from, size_to) ->
         let bias_var = Var.f_or_d [1; size_to] 0. ~type_ in
         let connected_var = Var.normal [size_from; size_to] ~stddev:epsilon_init ~type_ in
+        let check s var = Ops.checkNumerics ~message:(sprintf "Non-finite %s_%i variable." s i) var in
         let label s var = (sprintf "%s_%i" s i, var) in
-        ( Ops.(sigmoid ((node_so_far *^ connected_var) + bias_var))
+        ( Ops.(sigmoid ((node_so_far *^ check "connected" connected_var) + check "bias" bias_var))
         , label "connected" connected_var :: label "bias" bias_var :: vars_so_far
         , connected_var :: connected_vars_so_far
         ))
@@ -55,8 +56,11 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let loss =
     Ops.(unregularised_loss + regularisation)
     |> Ops.reduce_mean ~dims:[0]
+    |> Ops.checkNumerics ~message:"Non-finite loss."
   in
-  let optimizer = Optimizers.adam_minimizer ~learning_rate:(Ops.f_or_d ~shape:[] ~type_ 0.001) loss in
+  let optimizer =
+    Optimizers.adam_minimizer ~learning_rate:(Ops.f_or_d ~shape:[] ~type_ 0.001) loss
+  in
   { representation
   ; session
   ; type_
