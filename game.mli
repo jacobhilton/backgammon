@@ -1,3 +1,4 @@
+open Core
 open Async
 
 type t
@@ -17,4 +18,4 @@ val play
   -> ?move_number:int
   -> ?abandon_after_move:int
   -> t
-  -> ((Player.t * Outcome.t) option * [ `Moves of int ]) Deferred.t
+  -> ((Player.t * Outcome.t) Or_error.t * [ `Moves of int ]) Deferred.t

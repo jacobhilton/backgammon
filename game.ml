@@ -1,7 +1,8 @@
 open Core
 open Async
 
-type t = Player.t -> Board.t -> Roll.t -> history:string Per_player.t list -> Board.t Deferred.t
+type t =
+  Player.t -> Board.t -> Roll.t -> history:string Per_player.t list -> Board.t Or_error.t Deferred.t
 
 let of_equity equity player board roll ~history:_ =
   let boards_with_valuations =
@@ -24,7 +25,7 @@ let of_equity equity player board roll ~history:_ =
       if Float.equal valuation highest_valuation then Some board else None)
   in
   List.nth_exn highest_valuation_boards (Random.int (List.length highest_valuation_boards))
-  |> Deferred.return
+  |> Deferred.Or_error.return
 
 let rec human ?history_position:history_position_opt ~stdin () player board roll ~history =
   printf "Your move (? for help): ";
@@ -33,7 +34,7 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
   let user_input =
     match user_input_read_result with
     | `Ok user_input -> user_input
-    | `Eof -> failwith "Game terminated by user."
+    | `Eof -> failwith "Program terminated by user."
   in
   let pair l =
     let pairs, x_extra =
@@ -100,10 +101,11 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
   in
   let special_input =
     match String.to_list (String.lowercase user_input) with
-    | [] -> `History `Reset_or_toggle
+    | [] -> if Result.is_ok new_board then `Move else `History `Reset_or_toggle
     | 'p' :: _ -> `History (`Step 1)
     | 'n' :: _ -> `History (`Step (-1))
-    | '?' :: _ -> `Help
+    | ['h'; 'e'; 'l'; 'p'] | '?' :: _ -> `Help
+    | ['q'; 'u'; 'i'; 't'] -> `Quit
     | _ -> `Move
   in
   match special_input with
@@ -149,19 +151,23 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
       "Enter the start and end positions, separated by a foward slash \
        (or any non-numeric character), of each counter you want to move.\n\
        Each position should be number from 1 to 24, \"bar\" or \"off\".\n\
-       Unlike in standard notation, you should enter each counter movement individually, \
-       as in these examples:\n \
+       Unlike in standard notation, you should enter each counter movement individually. \
+       For example:\n \
        24/18 18/13\n \
        bar/3 13/10 13/10 8/5\n \
        2/off 1/off\n\
-       You can also navigate through past moves using:\n \
+       You can also enter these commands:\n \
        p - show the previous move\n \
        n - show the next move\n \
-       <enter> - toggle between showing the current and last moves\n";
+       <enter> - toggle between showing the current and last moves\n \
+       help - show this help text\n \
+       quit - abandon game\n";
     human ~stdin () player board roll ~history
+  | `Quit ->
+    Deferred.return (Or_error.errorf "abandoned by player %c" (Player.char player))
   | `Move ->
     match new_board with
-    | Ok x -> Deferred.return x
+    | Ok x -> Deferred.Or_error.return x
     | Error err ->
       printf "%s\n" (Error.to_string_hum err);
       human ~stdin () player board roll ~history
@@ -169,12 +175,9 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
 let vs ts player = (Per_player.get ts player) player
 
 let rec play ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.starting) ?(history=[])
-    ?(move_number=1) ?abandon_after_move t =
+    ?(move_number=1) ?abandon_after_move (t : t) =
   if Option.value_map abandon_after_move ~default:false ~f:(Int.(>) move_number) then
-    begin
-      printf "Abandoning game after %i moves." (move_number - 1);
-      Deferred.return (None, `Moves (move_number - 1))
-    end
+    Deferred.return (Or_error.error_string "abandoned due to length", `Moves (move_number - 1))
   else
     begin
       let to_play, roll =
@@ -190,7 +193,7 @@ let rec play ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.startin
       match Board.winner board with
       | Some (player, outcome) ->
         if display then printf "Player %c wins%s.\n" (Player.char player) (Outcome.to_phrase outcome);
-        Deferred.return (Some (player, outcome), `Moves (move_number - 1))
+        Deferred.return (Ok (player, outcome), `Moves (move_number - 1))
       | None ->
         let roll_text tense =
           sprintf "Move %i: player %c roll%s a %s.\n" move_number (Player.char to_play) tense
@@ -201,7 +204,9 @@ let rec play ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.startin
           (Per_player.create (fun viewer -> board_text ~viewer ^ roll_text "ed")) :: history
         in
         t to_play board roll ~history:new_history
-        >>= fun new_board ->
-        play ?show_pip_count ~display ~to_play:(Player.flip to_play) ~board:new_board
-          ~history:new_history ~move_number:(move_number + 1) t
+        >>= function
+        | Error err -> Deferred.return (Error err, `Moves (move_number - 1))
+        | Ok new_board ->
+          play ?show_pip_count ~display ~to_play:(Player.flip to_play) ~board:new_board
+            ~history:new_history ~move_number:(move_number + 1) ?abandon_after_move t
     end

@@ -31,28 +31,32 @@
       CKPT_TO_SAVE="${SAVES}/${METHOD}.$((${PLAYED}+10)).ckpt"
       PLAY_TO_SAVE="${SAVES}/${METHOD}.play"
       TD_CONFIG="((hidden_layer_sizes (40)) (ckpt_to_load (${CKPT_TO_LOAD})))"
+      ABANDON_AFTER="500"
       if [[ "${ACTION}" == "train" ]]; then
         REPLAY_MEMORY_CONFIG="((capacity (50_000)) (play_to_load (${PLAY_TO_LOAD})))"
         INSTRUCTIONS="((games 10) (train (minibatch_size 128) (minibatches_number 500)) (save_ckpt ${CKPT_TO_SAVE}) (save_play ${PLAY_TO_SAVE}))"
         if [[ "${METHOD}" == "pcr" ]] || ([[ "${METHOD}" == "hybrid" ]] && [[ "${PLAYED}" -lt 500 ]]); then
-          "${EXE}"\
-            -X "(pip_count_ratio (look_ahead 2))"\
-            -O "same"\
-            -train "(td (td_config ${TD_CONFIG}) (replay_memory_config ${REPLAY_MEMORY_CONFIG}))"\
-            -instructions "${INSTRUCTIONS}"
+          "${EXE}" \
+            -X "(pip_count_ratio (look_ahead 2))" \
+            -O "same" \
+            -train "(td (td_config ${TD_CONFIG}) (replay_memory_config ${REPLAY_MEMORY_CONFIG}))" \
+            -instructions "${INSTRUCTIONS}" \
+            -abandon-after "${ABANDON_AFTER}"
         else
-          "${EXE}"\
-            -X "(td (td_config ${TD_CONFIG}) (look_ahead 2))"\
-            -O "same"\
-            -train "(same (replay_memory_config ${REPLAY_MEMORY_CONFIG}))"\
-            -instructions "${INSTRUCTIONS}"
+          "${EXE}" \
+            -X "(td (td_config ${TD_CONFIG}) (look_ahead 2))" \
+            -O "same" \
+            -train "(same (replay_memory_config ${REPLAY_MEMORY_CONFIG}))" \
+            -instructions "${INSTRUCTIONS}" \
+            -abandon-after "${ABANDON_AFTER}"
         fi
       elif [[ "${ACTION}" == "test" ]]; then
         echo "After ${PLAYED} games:"
-        "${EXE}"\
-          -X "(td (td_config ${TD_CONFIG}) (look_ahead 1))"\
-          -O "(pip_count_ratio (look_ahead 2))"\
-          -instructions "((Games 100))"
+        "${EXE}" \
+          -X "(td (td_config ${TD_CONFIG}) (look_ahead 1))" \
+          -O "(pip_count_ratio (look_ahead 2))" \
+          -instructions "((Games 100))" \
+          -abandon-after "${ABANDON_AFTER}"
       fi
     done | tee -a "${SAVES}/${METHOD}.${ACTION}.log"
   fi

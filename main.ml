@@ -216,8 +216,8 @@ let play_games
         >>= fun (winner_and_outcome, `Moves number_of_moves) ->
         let winner_and_outcome_text =
           match winner_and_outcome with
-          | None -> "abandoned"
-          | Some (winner, outcome) ->
+          | Error err -> Error.to_string_hum err
+          | Ok (winner, outcome) ->
             increment total_wins winner;
             begin
               match outcome with
