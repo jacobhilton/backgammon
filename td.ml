@@ -7,7 +7,7 @@ type t =
   ; session : Session.t
   ; type_ : [ `float ] Node.Type.t
   ; input_placeholder : [ `float ] Ops.Placeholder.t
-  ; vars : (string * Node.p) list
+  ; vars : (string * [ `float ] Node.t) list
   ; model : [ `float ] Node.t
   ; output_placeholder : [ `float ] Ops.Placeholder.t
   ; loss : [ `float ] Node.t
@@ -32,7 +32,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
       ~f:(fun i (node_so_far, vars_so_far, connected_vars_so_far) (size_from, size_to) ->
         let bias_var = Var.f_or_d [1; size_to] 0. ~type_ in
         let connected_var = Var.normal [size_from; size_to] ~stddev:epsilon_init ~type_ in
-        let label s var = (sprintf "%s_%i" s i, Node.P var) in
+        let label s var = (sprintf "%s_%i" s i, var) in
         ( Ops.(sigmoid ((node_so_far *^ connected_var) + bias_var))
         , label "connected" connected_var :: label "bias" bias_var :: vars_so_far
         , connected_var :: connected_vars_so_far
@@ -132,14 +132,15 @@ let train t replay_memory ~minibatch_size ~minibatches_number =
   done
 
 let save t ~filename =
+  let vars = List.map t.vars ~f:(Tuple2.map_snd ~f:(fun var -> Node.P var)) in
   Session.run
     ~session:t.session
-    ~targets:[Node.P (Ops.save ~filename t.vars)]
+    ~targets:[Node.P (Ops.save ~filename vars)]
     Session.Output.empty
 
 let load t ~filename =
   let load_and_assign_nodes =
-    List.map t.vars ~f:(fun (label, (Node.P var)) ->
+    List.map t.vars ~f:(fun (label, var) ->
       Ops.restore
         ~type_:(Node.output_type var)
         (Ops.const_string ~shape:[] [filename])
@@ -151,3 +152,11 @@ let load t ~filename =
     ~session:t.session
     ~targets:load_and_assign_nodes
     Session.Output.empty
+
+let sexp_of_vars t =
+  List.map t.vars ~f:(Tuple2.map_snd ~f:(fun var ->
+    Session.run
+      ~session:t.session
+      (Session.Output.float var)
+    |> Tensor.to_float_array2))
+  |> [%sexp_of:(string * float array array) list]

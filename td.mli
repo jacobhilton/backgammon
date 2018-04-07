@@ -1,3 +1,5 @@
+open Core
+
 type t
 
 val create
@@ -31,3 +33,5 @@ val train
 val save : t -> filename:string -> unit
 
 val load : t -> filename:string -> unit
+
+val sexp_of_vars : t -> Sexp.t

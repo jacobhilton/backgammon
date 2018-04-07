@@ -114,6 +114,7 @@ module Instructions = struct
       | Games of int
       | Train of { minibatch_size : int; minibatches_number: int }
       | Save_ckpt of string
+      | Print_ckpt
       | Save_play of string
       | Repeat of int * t list
     [@@deriving sexp]
@@ -299,6 +300,10 @@ let main t =
           printf "Saving trained parameters to %s.\n" filename;
           let { Trainee.td; replay_memory = _ } = get_trainee () in
           Td.save td ~filename;
+          Deferred.unit
+        | Print_ckpt ->
+          let { Trainee.td; replay_memory = _ } = get_trainee () in
+          printf "%s\n" (Sexp.to_string (Td.sexp_of_vars td));
           Deferred.unit
         | Save_play play_to_save ->
           let filename = replace_hashes_with_repetitions play_to_save repetitions in
