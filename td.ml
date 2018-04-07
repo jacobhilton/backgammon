@@ -64,11 +64,10 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let optimizer =
     Optimizers.adam_minimizer ~learning_rate:(Ops.f_or_d ~shape:[] ~type_ 0.001) loss
   in
-  let checks =
-    `Checked (Ops.checkNumerics loss ~message:"Non-finite loss.") :: checked_vars
-  in
   let check =
-    List.map checks ~f:(fun (`Checked node) -> Ops.reshape node (Ops.ci32 ~shape:[1] [-1]))
+    `Checked (Ops.checkNumerics loss ~message:"Non-finite loss.") :: checked_vars
+    |> List.rev
+    |> List.map ~f:(fun (`Checked node) -> Ops.reshape node (Ops.ci32 ~shape:[1] [-1]))
     |> Ops.concat (Ops.ci32 ~shape:[] [0])
   in
   { representation
