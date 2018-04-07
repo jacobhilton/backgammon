@@ -1,4 +1,3 @@
-debug nan issues
 for gammons and backgammons, pass an Outcome.t and a Player.t to equities and a (payoff : Outcome.t -> Player.t -> float) to games
 give the network 3 output nodes (probably ignore backgammons)
 for a gammon pip count ratio, use pip count to point 6 plus 1 if nothing borne off, divided by sum of that plus opponent ordinary pip count
