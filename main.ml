@@ -230,18 +230,19 @@ let play_games
             sprintf "player %c wins%s" (Player.char winner) (Outcome.to_phrase outcome)
         in
         let results_text player =
-          let total_wins = Per_player.get !total_wins player in
-          let describe s number =
-            if Int.equal number 1 then sprintf "1 was a %s" s else sprintf "%i were %ss" number s
-          in
-          sprintf "Player %c has won %i game%s, of which %s and %s."
-            (Player.char player)
-            total_wins
-            (if Int.equal total_wins 1 then "" else "s")
-            (describe "gammon" (Per_player.get !gammons player))
-            (describe "backgammon" (Per_player.get !backgammons player))
+          if Int.equal number_of_games 1 then "" else
+            let total_wins = Per_player.get !total_wins player in
+            let describe s number =
+              if Int.equal number 1 then sprintf "1 was a %s" s else sprintf "%i were %ss" number s
+            in
+            sprintf " Player %c has won %i game%s, of which %s and %s."
+              (Player.char player)
+              total_wins
+              (if Int.equal total_wins 1 then "" else "s")
+              (describe "gammon" (Per_player.get !gammons player))
+              (describe "backgammon" (Per_player.get !backgammons player))
         in
-        printf "Game %i of %i: %s after %i moves. %s %s\n"
+        printf "Game %i of %i: %s after %i moves.%s%s\n"
           game_number
           number_of_games
           winner_and_outcome_text

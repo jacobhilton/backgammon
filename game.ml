@@ -188,27 +188,30 @@ let rec play ?abandon_after_move ?stdout_flushed ?show_pip_count ~display ?to_pl
           starting_player, Roll.generate_starting ()
         | Some to_play_value -> to_play_value, Roll.generate ()
       in
-      let board_text ~viewer = sprintf "\n%s\n\n" (Board.to_ascii board ?show_pip_count ~viewer) in
-      if display then printf "%s" (board_text ~viewer:to_play);
       match Board.winner board with
-      | Some (player, outcome) ->
-        if display then printf "Player %c wins%s.\n" (Player.char player) (Outcome.to_phrase outcome);
-        Deferred.return (Ok (player, outcome), `Moves (move_number - 1))
+      | Some (player, outcome) -> Deferred.return (Ok (player, outcome), `Moves (move_number - 1))
       | None ->
+        let board_text ~viewer = sprintf "\n%s\n\n" (Board.to_ascii board ?show_pip_count ~viewer) in
         let roll_text tense =
           sprintf "Move %i: player %c roll%s a %s.\n" move_number (Player.char to_play) tense
             (Roll.to_string roll)
         in
-        if display then printf "%s" (roll_text "s");
-        let new_history =
-          (Per_player.create (fun viewer -> board_text ~viewer ^ roll_text "ed")) :: history
-        in
         begin
-          match stdout_flushed with
-          | None -> Deferred.unit
-          | Some f -> if display then f () else Deferred.unit
+          if display then
+            begin
+              printf "%s%s" (board_text ~viewer:to_play) (roll_text "s");
+              match stdout_flushed with
+              | None -> Deferred.unit
+              | Some f -> f ()
+            end
+          else
+            Deferred.unit
         end
         >>= fun () ->
+        let new_history =
+          Per_player.create (fun viewer -> sprintf "%s%s" (board_text ~viewer) (roll_text "ed"))
+          :: history
+        in
         t to_play board roll ~history:new_history
         >>= function
         | Error err -> Deferred.return (Error err, `Moves (move_number - 1))
