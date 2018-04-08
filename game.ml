@@ -174,8 +174,8 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
 
 let vs ts player = (Per_player.get ts player) player
 
-let rec play ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.starting) ?(history=[])
-    ?(move_number=1) ?abandon_after_move (t : t) =
+let rec play ?abandon_after_move ?stdout_flushed ?show_pip_count ~display ?to_play:to_play_opt
+    ?(board=Board.starting) ?(history=[]) ?(move_number=1) t =
   if Option.value_map abandon_after_move ~default:false ~f:(Int.(>) move_number) then
     Deferred.return (Or_error.error_string "abandoned due to length", `Moves (move_number - 1))
   else
@@ -189,7 +189,7 @@ let rec play ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.startin
         | Some to_play_value -> to_play_value, Roll.generate ()
       in
       let board_text ~viewer = sprintf "\n%s\n\n" (Board.to_ascii board ?show_pip_count ~viewer) in
-      if display then print_string (board_text ~viewer:to_play);
+      if display then printf "%s" (board_text ~viewer:to_play);
       match Board.winner board with
       | Some (player, outcome) ->
         if display then printf "Player %c wins%s.\n" (Player.char player) (Outcome.to_phrase outcome);
@@ -199,14 +199,21 @@ let rec play ?show_pip_count ~display ?to_play:to_play_opt ?(board=Board.startin
           sprintf "Move %i: player %c roll%s a %s.\n" move_number (Player.char to_play) tense
             (Roll.to_string roll)
         in
-        if display then print_string (roll_text "s");
+        if display then printf "%s" (roll_text "s");
         let new_history =
           (Per_player.create (fun viewer -> board_text ~viewer ^ roll_text "ed")) :: history
         in
+        begin
+          match stdout_flushed with
+          | None -> Deferred.unit
+          | Some f -> if display then f () else Deferred.unit
+        end
+        >>= fun () ->
         t to_play board roll ~history:new_history
         >>= function
         | Error err -> Deferred.return (Error err, `Moves (move_number - 1))
         | Ok new_board ->
-          play ?show_pip_count ~display ~to_play:(Player.flip to_play) ~board:new_board
-            ~history:new_history ~move_number:(move_number + 1) ?abandon_after_move t
+          play ?abandon_after_move ?stdout_flushed ?show_pip_count ~display
+            ~to_play:(Player.flip to_play) ~board:new_board ~history:new_history
+            ~move_number:(move_number + 1) t
     end
