@@ -223,7 +223,7 @@ let rec play ?abandon_after_move ?stdout_flushed ?show_pip_count ~display ?to_pl
         | Error err -> Deferred.return (Error err, `Moves (move_number - 1))
         | Ok (new_board, valuation_opt) ->
           Option.iter valuation_opt ~f:(fun valuation ->
-            printf "Player %c estimates that they have a %s chance of winning."
+            printf "Player %c estimates that they have a %s chance of winning.\n"
               (Player.char to_play)
               (Percent.to_string (Percent.of_mult valuation)));
           play ?abandon_after_move ?stdout_flushed ?show_pip_count ~display
