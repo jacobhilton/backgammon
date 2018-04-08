@@ -1,4 +1,4 @@
-method is less general than TD-lambda, but smoothens training (lookup table would converge without needing to lower learning rate); could replace with other tree searches cf alphazero; replay memory smoothening and separation of concerns/parallelisability cf atari
+method is less general than TD-lambda, but smoothens training (lookup table would converge without needing to lower learning rate); could replace with other tree searches cf alphazero; replay memory smoothening and separation of concerns/parallelisability cf atari; hybrid solves issue of very long games at the start
 add an epsilon chance of playing randomly and/or using an old version for smoothness
 for gammons and backgammons, pass an Outcome.t and a Player.t to equities and a (payoff : Outcome.t -> Player.t -> float) to games
 give the network 5 output nodes (or possibly 3 if you want to ignore backgammons)
