@@ -1,8 +1,12 @@
 open Core
 open Async
 
-type t =
-  Player.t -> Board.t -> Roll.t -> history:string Per_player.t list -> Board.t Or_error.t Deferred.t
+type t
+  =  Player.t
+  -> Board.t
+  -> Roll.t
+  -> history:string Per_player.t list
+  -> (Board.t * float option) Or_error.t Deferred.t
 
 let of_equity equity player board roll ~history:_ =
   let boards_with_valuations =
@@ -24,8 +28,10 @@ let of_equity equity player board roll ~history:_ =
     List.filter_map boards_with_valuations ~f:(fun (board, valuation) ->
       if Float.equal valuation highest_valuation then Some board else None)
   in
-  List.nth_exn highest_valuation_boards (Random.int (List.length highest_valuation_boards))
-  |> Deferred.Or_error.return
+  let board =
+    List.nth_exn highest_valuation_boards (Random.int (List.length highest_valuation_boards))
+  in
+  Deferred.Or_error.return (board, Some highest_valuation)
 
 let rec human ?history_position:history_position_opt ~stdin () player board roll ~history =
   printf "Your move (? for help): ";
@@ -167,7 +173,7 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
     Deferred.return (Or_error.errorf "abandoned by player %c" (Player.char player))
   | `Move ->
     match new_board with
-    | Ok x -> Deferred.Or_error.return x
+    | Ok x -> Deferred.Or_error.return (x, None)
     | Error err ->
       printf "%s\n" (Error.to_string_hum err);
       human ~stdin () player board roll ~history
@@ -215,7 +221,11 @@ let rec play ?abandon_after_move ?stdout_flushed ?show_pip_count ~display ?to_pl
         t to_play board roll ~history:new_history
         >>= function
         | Error err -> Deferred.return (Error err, `Moves (move_number - 1))
-        | Ok new_board ->
+        | Ok (new_board, valuation_opt) ->
+          Option.iter valuation_opt ~f:(fun valuation ->
+            printf "Player %c estimates that they have a %s chance of winning."
+              (Player.char to_play)
+              (Percent.to_string (Percent.of_mult valuation)));
           play ?abandon_after_move ?stdout_flushed ?show_pip_count ~display
             ~to_play:(Player.flip to_play) ~board:new_board ~history:new_history
             ~move_number:(move_number + 1) t
