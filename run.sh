@@ -30,7 +30,7 @@
       fi
       CKPT_TO_SAVE="${SAVES}/${METHOD}.$((${PLAYED}+10)).ckpt"
       PLAY_TO_SAVE="${SAVES}/${METHOD}.play"
-      TD_CONFIG="((hidden_layer_sizes (40)) (ckpt_to_load (${CKPT_TO_LOAD})))"
+      TD_CONFIG="((hidden_layer_sizes (40)) (activation sigmoid) (ckpt_to_load (${CKPT_TO_LOAD})))"
       ABANDON_AFTER="500"
       if [[ "${ACTION}" == "train" ]]; then
         REPLAY_MEMORY_CONFIG="((capacity (50_000)) (play_to_load (${PLAY_TO_LOAD})))"

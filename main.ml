@@ -4,13 +4,14 @@ open Async
 module Td_config = struct
   type t =
     { hidden_layer_sizes : int list
+    ; activation : [ `Sigmoid | `Relu ]
     ; representation : [ `Original | `Modified ] sexp_option
     ; ckpt_to_load : string option
     } [@@deriving of_sexp]
 
-  let unpack { hidden_layer_sizes; representation; ckpt_to_load } =
+  let unpack { hidden_layer_sizes; activation; representation; ckpt_to_load } =
     let representation = Option.value representation ~default:`Modified in
-    let td = Td.create ~hidden_layer_sizes ~representation () in
+    let td = Td.create ~hidden_layer_sizes ~activation ~representation () in
     begin
       match ckpt_to_load with
       | None -> ()

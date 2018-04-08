@@ -5,6 +5,7 @@ type t
 val create
   :  ?epsilon_init:float
   -> hidden_layer_sizes:int list
+  -> activation:[ `Sigmoid | `Relu ]
   -> representation:[ `Original | `Modified ]
   -> unit
   -> t

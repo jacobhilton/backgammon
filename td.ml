@@ -14,7 +14,7 @@ type t =
   ; optimizer : Node.p list
   }
 
-let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
+let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~activation ~representation () =
   let input_size =
     match representation with
     | `Original -> 196
@@ -27,16 +27,22 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~representation () =
   let layer_size_pairs =
     List.zip_exn (input_size :: hidden_layer_sizes) (hidden_layer_sizes @ [output_size])
   in
+  let activation_function =
+    let erase_optional_arguments f x = f x in
+    match activation with
+    | `Sigmoid -> erase_optional_arguments Ops.sigmoid
+    | `Relu -> erase_optional_arguments Ops.relu
+  in
   let logits, vars, connected_vars =
     List.foldi layer_size_pairs ~init:(Ops.Placeholder.to_node input_placeholder, [], [])
       ~f:(fun i (node_so_far, vars_so_far, connected_vars_so_far) (size_from, size_to) ->
         let bias_var = Var.f_or_d [1; size_to] 0. ~type_ in
         let connected_var = Var.normal [size_from; size_to] ~stddev:epsilon_init ~type_ in
-        let activation_if_hidden_layer =
-          if Int.equal i (List.length hidden_layer_sizes) then Fn.id else (fun x -> Ops.relu x)
+        let maybe_activate =
+          if Int.equal i (List.length hidden_layer_sizes) then Fn.id else activation_function
         in
         let label s var = (sprintf "%s_%i" s i, var) in
-        ( activation_if_hidden_layer Ops.((node_so_far *^ connected_var) + bias_var)
+        ( maybe_activate Ops.((node_so_far *^ connected_var) + bias_var)
         , label "connected" connected_var :: label "bias" bias_var :: vars_so_far
         , connected_var :: connected_vars_so_far
         ))
