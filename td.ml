@@ -23,7 +23,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~activation ~representation (
   let output_size = 1 in
   let session = Session.create () in
   let type_ = Node.Type.Float in
-  let input_placeholder = Ops.placeholder ~type_ [1; input_size] in
+  let input_placeholder = Ops.placeholder ~type_ [-1; input_size] in
   let layer_size_pairs =
     List.zip_exn (input_size :: hidden_layer_sizes) (hidden_layer_sizes @ [output_size])
   in
@@ -47,10 +47,10 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~activation ~representation (
         , connected_var :: connected_vars_so_far
         ))
   in
-  let output_placeholder = Ops.placeholder ~type_ [1; output_size] in
+  let output_placeholder = Ops.placeholder ~type_ [-1; output_size] in
   let output_node = Ops.Placeholder.to_node output_placeholder in
   let sigmoid_cross_entropy_with_logits ~labels ~logits =
-    let c f = Ops.f_or_d ~shape:[1; output_size] ~type_ f in
+    let c f = Ops.f_or_d ~shape:[] ~type_ f in
     Ops.(relu logits - logits * labels + log (c 1. + exp (c 0. - abs logits)))
   in
   let unregularised_loss =
