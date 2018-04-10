@@ -79,7 +79,7 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
       if
         List.exists legal_turn_prefixes ~f:(fun legal_turn_prefix ->
           let sorted_distances l =
-            List.sort (List.map l ~f:Move.capped_distance) ~cmp:Int.compare
+            List.sort (List.map l ~f:Move.capped_distance) ~compare:Int.compare
           in
           List.equal (sorted_distances moves) (sorted_distances legal_turn_prefix)
             ~equal:Int.equal)

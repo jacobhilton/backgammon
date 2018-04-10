@@ -1,9 +1,9 @@
 method is less general than TD-lambda, but smoothens training (lookup table would converge without needing to lower learning rate); could replace with other tree searches cf alphazero; replay memory smoothening and separation of concerns/parallelisability cf atari; hybrid solves issue of very long games at the start
-add an epsilon chance of playing randomly and/or using an old version for smoothness
+add an epsilon chance of playing randomly (and possiblye using an old version for smoothness) - do this some proportion of the time
 for gammons and backgammons, pass an Outcome.t and a Player.t to equities and a (payoff : Outcome.t -> Player.t -> float) to games
 give the network 5 output nodes (or possibly 3 if you want to ignore backgammons)
 for a gammon pip count ratio, use pip count to point 6 plus 1 if nothing borne off, divided by sum of that plus opponent ordinary pip count
-both calls to [Session.run] in td.ml appear to have some kind of memory leak
+use the repeat variant now that the memory leak is fixed
 try with hidden_layer_sizes 100, 100 (say) and relu activation
 consider batching tensorflow calls in minimax
 consider just using 1-ply search and updating using the best move

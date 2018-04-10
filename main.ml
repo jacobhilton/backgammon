@@ -327,7 +327,7 @@ let main t =
 
 let () =
   let open Command.Let_syntax in
-  Command.async'
+  Command.async
     ~summary:"backgammon"
     [%map_open
       let forwards = Game_config.flag Player.Forwards

@@ -109,7 +109,7 @@ let load t ~filename of_sexp =
 
 let shuffle l =
   List.map l ~f:(fun x -> (x, Random.bits ()))
-  |> List.sort ~cmp:(fun (_, a) (_, b) -> Int.compare a b)
+  |> List.sort ~compare:(fun (_, a) (_, b) -> Int.compare a b)
   |> List.map ~f:fst
 
 let rec sample t sample_size =
