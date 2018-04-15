@@ -225,15 +225,24 @@ let to_representation t version ~to_play =
       match version with
       | `Original -> [Int.to_float count /. 2.]
       | `Modified ->
-        [ (if Int.(count >= 1) then 1. else 0.)
-        ; (if Int.(count >= 2) then Float.(/) (Int.to_float (count - 1)) 2. else 0.)
+        [ if Int.(count >= 1) then 1. else 0.
+        ; if Int.(count >= 2) then Float.(/) (Int.to_float (count - 1)) 2. else 0.
+        ]
+      | `Expanded ->
+        [ if Int.(count >= 1) then 1. else 0.
+        ; if Int.(count >= 2) then 1. else 0.
+        ; if Int.(count >= 3) then 1. else 0.
+        ; if Int.(count >= 4) then Float.(/) (Int.to_float (count - 3)) 2. else 0.
         ])
   in
-  let off_representation = Per_player.map t.off ~f:(fun count -> [Int.to_float count /. 15.]) in
+  let off_representation =
+    Per_player.map t.off ~f:(fun count ->
+      match version with
+      | `Original | `Modified -> [Int.to_float count /. 15.]
+      | `Expanded -> List.init 15 ~f:(fun i -> if Int.(count >= i + 1) then 1. else 0.))
+  in
   let points_representation =
-    List.map t.points ~f:(fun point ->
-      Per_player.map (Point.to_representation point version)
-        ~f:(fun (x1, x2, x3, x4) -> [x1; x2; x3; x4]))
+    List.map t.points ~f:(fun point -> Point.to_representation point version)
   in
   let representation player =
     Per_player.get bar_representation player
@@ -242,4 +251,3 @@ let to_representation t version ~to_play =
   in
   representation Forwards @ (List.rev (representation Backwards))
   |> order to_play
-  |> Array.of_list

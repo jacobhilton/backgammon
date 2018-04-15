@@ -6,18 +6,18 @@ val create
   :  ?epsilon_init:float
   -> hidden_layer_sizes:int list
   -> activation:[ `Sigmoid | `Relu ]
-  -> representation:[ `Original | `Modified ]
+  -> representation:[ `Original | `Modified | `Expanded ]
   -> unit
   -> t
 
-val representation : t -> [ `Original | `Modified ]
+val representation : t -> [ `Original | `Modified | `Expanded ]
 
 val eval : t -> Equity.Setup.t array -> float array
 
 module Setup : sig
   type t [@@deriving sexp]
 
-  val create : Equity.Setup.t -> [ `Original | `Modified ] -> t
+  val create : Equity.Setup.t -> [ `Original | `Modified | `Expanded ] -> t
 
   module And_valuation : sig
     type nonrec t = t * float [@@deriving sexp]

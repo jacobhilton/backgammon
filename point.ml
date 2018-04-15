@@ -36,13 +36,19 @@ let add_exn t player =
 
 let to_representation t version =
   let forwards_representation t =
-    ( (if Int.equal t 1 then 1. else 0.)
-    , (if Int.(t >= 2) then 1. else 0.)
-    , (match version with
+    [ if Int.equal t 1 then 1. else 0.
+    ; if Int.(t >= 2) then 1. else 0.
+    ; (match version with
        | `Original -> if Int.equal t 3 then 1. else 0.
-       | `Modified -> if Int.(t >= 3) then 1. else 0.)
-    , (if Int.(t >= 4) then Float.(/) (Int.to_float (t - 3)) 2. else 0.)
-    )
+       | `Modified | `Expanded -> if Int.(t >= 3) then 1. else 0.)
+    ] @
+    match version with
+    | `Original | `Modified -> [if Int.(t >= 4) then Float.(/) (Int.to_float (t - 3)) 2. else 0.]
+    | `Expanded ->
+      [ if Int.(t >= 4) then 1. else 0.
+      ; if Int.(t >= 5) then 1. else 0.
+      ; if Int.(t >= 6) then Float.(/) (Int.to_float (t - 5)) 2. else 0.
+      ]
   in
   Per_player.create (function
     | Player.Forwards -> forwards_representation t

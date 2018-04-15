@@ -33,4 +33,4 @@ val to_ascii
   -> t
   -> string
 
-val to_representation : t -> [ `Original | `Modified ] -> to_play:Player.t -> float array
+val to_representation : t -> [ `Original | `Modified | `Expanded ] -> to_play:Player.t -> float list

@@ -5,12 +5,11 @@ module Td_config = struct
   type t =
     { hidden_layer_sizes : int list
     ; activation : [ `Sigmoid | `Relu ]
-    ; representation : [ `Original | `Modified ] sexp_option
+    ; representation : [ `Original | `Modified | `Expanded ]
     ; ckpt_to_load : string option
     } [@@deriving of_sexp]
 
   let unpack { hidden_layer_sizes; activation; representation; ckpt_to_load } =
-    let representation = Option.value representation ~default:`Modified in
     let td = Td.create ~hidden_layer_sizes ~activation ~representation () in
     begin
       match ckpt_to_load with
@@ -196,7 +195,7 @@ let create ~forwards ~backwards ~trainee_config ~instructions ~display_override 
   let display = Game_config.is_human forwards || Game_config.is_human backwards || display_override in
   let stdout_flushed =
     let stdout = Lazy.force Writer.stdout in
-    fun () -> Writer.flushed stdout
+    fun () -> Deferred.any_unit [Writer.flushed stdout; Clock.after (sec 1.)]
   in
   { game; trainee; instructions; display; show_pip_count; abandon_after_move; stdout_flushed }
 

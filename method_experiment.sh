@@ -30,7 +30,7 @@ else
     fi
     CKPT_TO_SAVE="${SAVES}/${METHOD}.$((${PLAYED}+10)).ckpt"
     PLAY_TO_SAVE="${SAVES}/${METHOD}.play"
-    TD_CONFIG="((hidden_layer_sizes (40)) (activation Sigmoid) (ckpt_to_load (${CKPT_TO_LOAD})))"
+    TD_CONFIG="((hidden_layer_sizes (40)) (activation Sigmoid) (representation Modified) (ckpt_to_load (${CKPT_TO_LOAD})))"
     if [[ "${ACTION}" == "train" ]]; then
       REPLAY_MEMORY_CONFIG="((capacity (50_000)) (play_to_load (${PLAY_TO_LOAD})))"
       INSTRUCTIONS="((games 10) (train (minibatch_size 128) (minibatches_number 500)) (save_ckpt ${CKPT_TO_SAVE}) (save_play ${PLAY_TO_SAVE}))"

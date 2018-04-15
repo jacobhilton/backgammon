@@ -10,7 +10,7 @@ STDIN_FIFO="${DIR}/stdin.fifo"
 OUTPUT_TXT="${DIR}/output.txt"
 OUTPUT_LOG="${DIR}/output.log"
 STDERR_LOG="${DIR}/stderr.log"
-TD_CONFIG="((hidden_layer_sizes (40)) (activation Sigmoid) (ckpt_to_load (${DIR}/self.ckpt)))"
+TD_CONFIG="((hidden_layer_sizes (40)) (activation Sigmoid) (representation Modified) (ckpt_to_load (${DIR}/self.ckpt)))"
 if ! [[ -p "${STDIN_FIFO}" ]]; then
   mkfifo "${STDIN_FIFO}"
   chmod a+w "${STDIN_FIFO}"

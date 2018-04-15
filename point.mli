@@ -12,4 +12,4 @@ val remove_exn : t -> Player.t -> t
 
 val add_exn : t -> Player.t -> t
 
-val to_representation : t -> [ `Original | `Modified ] -> (float * float * float * float) Per_player.t
+val to_representation : t -> [ `Original | `Modified | `Expanded ] -> float list Per_player.t

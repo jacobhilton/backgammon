@@ -3,7 +3,7 @@ open Tensorflow
 open Tensorflow_core
 
 type t =
-  { representation : [ `Original | `Modified ]
+  { representation : [ `Original | `Modified | `Expanded ]
   ; session : Session.t
   ; type_ : [ `float ] Node.Type.t
   ; input_placeholder : [ `float ] Ops.Placeholder.t
@@ -19,6 +19,7 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~activation ~representation (
     match representation with
     | `Original -> 196
     | `Modified -> 198
+    | `Expanded -> 326
   in
   let output_size = 1 in
   let session = Session.create () in
@@ -91,7 +92,7 @@ module Setup = struct
     } [@@deriving sexp]
 
   let create { Equity.Setup.player; to_play; board } version =
-    { board = Board.to_representation board version ~to_play
+    { board = Array.of_list (Board.to_representation board version ~to_play)
     ; sign = if Player.equal to_play player then 1. else -1.
     }
 
