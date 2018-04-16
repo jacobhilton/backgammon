@@ -1,23 +1,25 @@
 # backgammon
 
-An OCaml implementation of command-line backgammon with an AI trained using reinforcement learning. **Play against the AI [here](https://www.jacobh.co.uk/backgammon).**
+An OCaml implementation of command-line backgammon with an AI trained using reinforcement learning.
 
-Backgammon was the first major board game to be successfully attacked with techniques that resemble modern reinforcement learning, by Gerald Tesauro in the early 1990s. A first-hand account of the development of his program, TD-Gammon, can be found [here][2]. A good second-hand summary, including an introduction to the TD-*&lambda;* algorithm on which the program is based, can be found in [1]. Details of some later implementations can be found [here][3] and [here][4].
+**Play against the AI [here](https://www.jacobh.co.uk/backgammon).**
+
+Backgammon was the first major board game to be successfully attacked with techniques that resemble modern reinforcement learning, by Gerald Tesauro in the early 1990s. A first-hand account of the development of his program, TD-Gammon, can be found [here][2]. A good second-hand summary, including an introduction to the TD(*&lambda;*) algorithm on which the program is based, can be found in [1]. Details of some later implementations can be found [here][3] and [here][4].
 
 Our implementation uses a closely-related but distinct algorithm. In outline, the general form of our algorithm is as follows.
-- Set up a feedforward neural network that takes as input a representation of a board position from the perspective of a particular player, and is intended to output an estimate of that player's "equity", i.e. the probability of that player winning the game (and one could also ask for the probabilities of winning or losing a gammon or a backgammon).
+- Set up a feedforward neural network that takes as input a representation of a board position from the perspective of a particular player, and is intended to output an estimate of that player's "equity", i.e. the probability of that player winning the game (one may additionally ask for the probabilities of winning or losing a gammon or a backgammon).
 - Construct an "amplified" equity estimator, which is allowed to be more expensive than the neural network but should also be more accurate. In the simplest case, the amplified estimator can use 1-ply look-ahead, i.e. consider every possible roll of the dice and calculate the expected equity, as estimated by the neural network itself, once the opponent has played their next move. The amplified estimator should correctly identify who has won (and whether by a gammon or a backgammon) once the game is over.
 - Generate a sequence of board positions (by self-play using the amplified estimator, for example), estimate the equity of each position using the amplified estimator, and use these as training examples for the neural network.
 
-One may view the 1-ply look-ahead version of this algorithm as being obtained from TD-*&lambda;* by making the following modifications.
+One may view the 1-ply look-ahead version of this algorithm as being obtained from TD(*&lambda;*) by making the following modifications.
 - Set the time-decay parameter *&lambda;* to zero, i.e. only feed back errors one time step. Tesauro mentions [here][3] that most later development of TD-Gammon used this modification.
 - Rather than choosing a single roll of the dice at random, consider every possible roll and take the expected value before feeding back the error.
 - Train the neural network once each game is over rather than learning online.
 
-This algorithm cannot be used in quite as general a setting as TD-*&lambda;* itself: it requires us to have perfect knowledge of the environment, in order to consider every possible roll of the dice. But given that this knowledge is available in backgammon, the algorithm offers a number of advantages.
-- The averaging should smoothen the training process. Formally, it has a stronger convergence property: with an idealised function approximator instead of the neural network (such as a lookup table), and assuming that every possible board position is reached infinitely many times, the algorithm converges to produce a completely accurate equity estimator *without needing to lower the learning rate* (whereas TD-*&lambda;* only converges if the learning rate tends to zero).
+This algorithm cannot be used in quite as general a setting as TD(*&lambda;*) itself: it requires us to have perfect knowledge of the environment, in order to consider every possible roll of the dice. But given that this knowledge is available in backgammon, the algorithm offers a number of advantages.
+- The averaging should smoothen the training process. Formally, it has a stronger convergence property: with an idealised function approximator instead of the neural network (such as a lookup table), and assuming that every possible board position is reached infinitely many times, the algorithm converges to produce a completely accurate equity estimator *without needing to lower the learning rate* (whereas TD(*&lambda;*) only converges if the learning rate tends to zero).
 - It is straightforward to use a different amplification scheme in place of 1-ply look-ahead, such as Monte Carlo tree search or one of its variants. With such a modification the algorithm may be viewed as a simplified version of [AlphaZero](https://arxiv.org/abs/1712.01815).
-- The training of the neural network is decoupled from the process of generating training examples. This makes it possible to use the training examples more effeciently and to apply techniques such as [experience replay](https://arxiv.org/pdf/1312.5602v1.pdf) to further smoothen training. It also simplifies parallelisation of the algorithm.
+- The training of the neural network is decoupled from the process of generating training examples. This makes it possible to use the training examples more efficiently and to apply techniques such as [experience replay](https://arxiv.org/pdf/1312.5602v1.pdf) to further smoothen training. It also simplifies parallelisation of the algorithm.
 
 The implementation uses [tensorflow-ocaml](https://github.com/LaurentMazare/tensorflow-ocaml).
 
@@ -25,7 +27,7 @@ The implementation uses [tensorflow-ocaml](https://github.com/LaurentMazare/tens
 
 ### Training using a handcrafted AI
 
-Tesauro [mentions][2] that with random play, backgammon games often last several hundred or even several thousand moves. This threatens to significantly slow down the initial stages of training when using self-play. This is especially true since we only feed back one time step, so initially the neural network only learns to improve on board positions that are one move away from the end of the game.
+Tesauro [remarks][2] that with random play, backgammon games often last several hundred or even several thousand moves. This threatens to significantly slow down the initial stages of training when using self-play. This is especially true since we only feed back one time step, so initially the neural network only learns to improve on board positions that are one move away from the end of the game.
 
 Since it is possible to change the amplified equity estimator in our algorithm, we therefore tried using a handcrafted AI as the amplified equity estimator, at least during the initial stages of training. Our handcrafted AI uses 1-ply look-ahead, but instead of using the neural network, it uses the ratio of the players' [pip counts](https://en.wikipedia.org/wiki/Backgammon) as a heuristic evaluation function. This ratio is a very poor estimate of the probability of winning (except very close to the end of the game), but with look-ahead it produces an AI that is able to implement simple strategies such as capturing and playing safe, preventing the game from lasting a very long time.
 
