@@ -1,22 +1,22 @@
-!# backgammon
+# backgammon
 
-An OCaml implementation of command-line backgammon with an AI trained using reinforcement learning. Play against the AI [here](https://www.jacobh.co.uk/backgammon)!
+An OCaml implementation of command-line backgammon with an AI trained using reinforcement learning. **Play against the AI [here](https://www.jacobh.co.uk/backgammon).**
 
 Backgammon was the first major board game to be successfully attacked with techniques that resemble modern reinforcement learning, by Gerald Tesauro in the early 1990s. A first-hand account of the development of his program, TD-Gammon, can be found [here][2]. A good second-hand summary, including an introduction to the TD-*&lambda;* algorithm on which the program is based, can be found in [1]. Details of some later implementations can be found [here][3] and [here][4].
 
-This implementation uses a closely-related but distinct algorithm. In outline, the general form of the algorithm is as follows.
-- Set up a feedforward neural network that takes as input a representation of a board position from the perspective of a particular player, and is intended to output an estimate of that player's "equity", i.e. the probability of that player winning the game (as well as the probabilities of winning or losing a gammon or a backgammon).
+Our implementation uses a closely-related but distinct algorithm. In outline, the general form of our algorithm is as follows.
+- Set up a feedforward neural network that takes as input a representation of a board position from the perspective of a particular player, and is intended to output an estimate of that player's "equity", i.e. the probability of that player winning the game (and one could also ask for the probabilities of winning or losing a gammon or a backgammon).
 - Construct an "amplified" equity estimator, which is allowed to be more expensive than the neural network but should also be more accurate. In the simplest case, the amplified estimator can use 1-ply look-ahead, i.e. consider every possible roll of the dice and calculate the expected equity, as estimated by the neural network itself, once the opponent has played their next move. The amplified estimator should correctly identify who has won (and whether by a gammon or a backgammon) once the game is over.
 - Generate a sequence of board positions (by self-play using the amplified estimator, for example), estimate the equity of each position using the amplified estimator, and use these as training examples for the neural network.
 
-The 1-ply look-ahead version of this algorithm can be obtained from as TD-*&lambda;* by making the following modifications.
+One may view the 1-ply look-ahead version of this algorithm as being obtained from TD-*&lambda;* by making the following modifications.
 - Set the time-decay parameter *&lambda;* to zero, i.e. only feed back errors one time step. Tesauro mentions [here][3] that most later development of TD-Gammon used this modification.
 - Rather than choosing a single roll of the dice at random, consider every possible roll and take the expected value before feeding back the error.
-- Train the neural network once the game is over rather than learning online.
+- Train the neural network once each game is over rather than learning online.
 
-This algorithm cannot be used in quite as general a setting as TD-*&lambda;* itself: it requires us to have perfect knowledge of the environment, in order to consider every possible roll of the dice. But given that this knowledge is available to us, the algorithm offers a number of advantages.
+This algorithm cannot be used in quite as general a setting as TD-*&lambda;* itself: it requires us to have perfect knowledge of the environment, in order to consider every possible roll of the dice. But given that this knowledge is available in backgammon, the algorithm offers a number of advantages.
 - The averaging should smoothen the training process. Formally, it has a stronger convergence property: with an idealised function approximator instead of the neural network (such as a lookup table), and assuming that every possible board position is reached infinitely many times, the algorithm converges to produce a completely accurate equity estimator *without needing to lower the learning rate* (whereas TD-*&lambda;* only converges if the learning rate tends to zero).
-- It is straightforward to plug in a different amplification scheme in place of 1-ply look-ahead, such as Monte Carlo tree search or one of its variants. With such a modification the algorithm may be viewed as a simplified version of [AlphaZero](https://arxiv.org/abs/1712.01815).
+- It is straightforward to use a different amplification scheme in place of 1-ply look-ahead, such as Monte Carlo tree search or one of its variants. With such a modification the algorithm may be viewed as a simplified version of [AlphaZero](https://arxiv.org/abs/1712.01815).
 - The training of the neural network is decoupled from the process of generating training examples. This makes it possible to use the training examples more effeciently and to apply techniques such as [experience replay](https://arxiv.org/pdf/1312.5602v1.pdf) to further smoothen training. It also simplifies parallelisation of the algorithm.
 
 The implementation uses [tensorflow-ocaml](https://github.com/LaurentMazare/tensorflow-ocaml).
@@ -27,11 +27,11 @@ The implementation uses [tensorflow-ocaml](https://github.com/LaurentMazare/tens
 
 Tesauro [mentions][2] that with random play, backgammon games often last several hundred or even several thousand moves. This threatens to significantly slow down the initial stages of training when using self-play. This is especially true since we only feed back one time step, so initially the neural network only learns to improve on board positions that are one move away from the end of the game.
 
-Since it is possible to vary the amplified equity estimator scheme in our algorithm, we therefore tried using a handcrafted AI as the amplified equity estimator, at least during the initial stages of training. Our handcrafted AI uses 1-ply look-ahead, but instead of using the neural network, it uses the ratio of the players' [pip counts](https://en.wikipedia.org/wiki/Backgammon) as a heuristic evaluation function. This ratio is a very poor estimate of the probability of winning (except very close to the end of the game), but with look-ahead it produces an AI that is able to implement simple strategies such as capturing and playing safe, preventing the game from lasting a very long time.
+Since it is possible to change the amplified equity estimator in our algorithm, we therefore tried using a handcrafted AI as the amplified equity estimator, at least during the initial stages of training. Our handcrafted AI uses 1-ply look-ahead, but instead of using the neural network, it uses the ratio of the players' [pip counts](https://en.wikipedia.org/wiki/Backgammon) as a heuristic evaluation function. This ratio is a very poor estimate of the probability of winning (except very close to the end of the game), but with look-ahead it produces an AI that is able to implement simple strategies such as capturing and playing safe, preventing the game from lasting a very long time.
 
 We compared three variants of the algorithm for 2,000 training games: using self-play (with 1-ply look-ahead), using only our handcrafted AI, and using a hybrid method in which the handcrafted AI was used for the first 500 training games before switching to self-play. This experiment used a very similar neural network architecture to Tesauro, with a single fully-connected hidden layer of 40 units and sigmoid activation. Only our board encoding is slightly different: in the encoding of the number *n* of a player's counters on a particular point, we replace the condition *n* = 3 by the condition *n* ≥ 3, in an attempt to take advantage of the fact that this indicates that the player will still have a made point after removing a counter; the unit specifying the number of counters on the bar is split in two, one specifying whether any counters are on the bar; and the unit indicating whose turn it is is removed, thereby removing a symmetry of the original representation. For training, we use the [Adam](https://arxiv.org/pdf/1412.6980.pdf) optimisation algorithm, and train on 500 minibatches of size 128 after every 10 games, using a [replay memory](https://arxiv.org/pdf/1312.5602v1.pdf) with a capacity of 50,000 board positions. For testing, after every 10 training games, 100 games were played between an AI that chooses moves using the neural network (with no look-ahead) and the handcrafted AI.
 
-Here are the results, shown as moving averages so as to cancel out the noise.
+Here are the results, with moving averages displayed in order to cancel out some of the noise.
 
 ![
 import numpy as np
@@ -62,20 +62,21 @@ ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
 plt.show()
 ](handcrafted_experiment.png)
 
-As expected, training using the handcrafted AI very quickly produces something with reasonable performance, but this performance plateaus at 50%, i.e. it cannot outperform the handcrafted AI itself. The hybrid method clearly improves upon this, while training using self-play starts out much more slowly. However, the self-play method catches up with the hybrid method in under 1,500 training games. Interestingly, in this particular run, after the full 2,000 games, the AI produced using self-play was slightly better than the AI produced using the hybrid method, winning 52,024 games in a 100,000-game head-to-head. While this difference could be put down to noise in the training process, it certainly appears that any early advantage gained by using the hybrid method has all but disappeared after 2,000 training games. Our best explanation for this is that, while the handcrafted AI is able to make reasonable moves, its equity estimates are very poor, so the hybrid method has a lot of "unlearning" to do after it switches to self-play.
+As expected, training using the handcrafted AI very quickly produces something with reasonable performance, but this performance plateaus at 50%, since naturally it cannot outperform the handcrafted AI itself. The hybrid method clearly improves upon this, while training using self-play starts out much more slowly. However, the self-play method catches up with the hybrid method in under 1,500 training games. Interestingly, in this particular run, after the full 2,000 games, the AI produced using self-play was slightly better than the AI produced using the hybrid method, winning 52,024 games in a 100,000-game head-to-head. While this difference could be put down to noise in the training process, it certainly appears that any early advantage gained by using the hybrid method has all but disappeared after 2,000 training games. Our explanation for this is that, while the handcrafted AI is able to make reasonable moves, its equity estimates are very poor, so the hybrid method has a lot of "unlearning" to do after it switches to self-play.
 
-However, the graph does not show the length of the early training games and the time saved as a result. Therefore the best approach may be to use the handcrafted AI for a very small number of initial training games (a single game, say), to put the AI on the right track, before switching to self-play. Since the benefit appears to be modest, in the remaining experiments we choose to forgo the use of handcrafted AI entirely for the sake of simplicity.
+Despite those remarks, the graph does not show the length of the early training games and the time saved as a result. Therefore the best approach may be to use the handcrafted AI for a very small number of initial training games (a single game, say), to put the AI on the right track, before switching to self-play. Since the benefit appears to be modest, in our remaining experiments we choose to forgo the use of handcrafted AI entirely for the sake of simplicity.
 
-Finally, we note that our AI performs well after relatively few training games. Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. While we have unfortunately not yet implemented a way to test our AI against a shared benchmark, our self-play method stops improving after a few thousand games. However, this difference is somewhat of an illusion, as our algorithm considers around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance more comparable.
+Finally, we note that our AI performs well after relatively few training games. Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. While we have unfortunately not yet implemented a way to test our AI against a shared benchmark, our self-play method peforms well and stops improving after a only few thousand games. However, this difference is somewhat of an illusion, since our algorithm considers around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms more comparable.
 
 ### Coming soon...
 
-- An experiment between different neural network architectures using an expanded board representation: using 1 hidden layer of size 40, using 2 hidden layers of size 80, and using 5 hidden layers of size 400 (with relu activation in the final case).
+- An experiment between different neural network architectures using an expanded board representation: using 1 hidden layer of size 40, using 2 hidden layers of size 80, and using 5 hidden layers of size 400 and relu rather than sigmoid activation
 - An experiment between 1-ply look-ahead and some form of Monte Carlo tree search guided by the output of the neural network
 
 ## Reference
 
 [1] Richard S. Sutton and Andrew G. Barto. *Reinforcement Learning: An Introduction.*
+
 [2]: http://www.bkgm.com/articles/tesauro/tdl.html
 [3]: http://www.scholarpedia.org/article/User:Gerald_Tesauro/Proposed/Td-gammon
 [4]: https://www.cs.cornell.edu/boom/2001sp/Tsinteris/gammon.htm
