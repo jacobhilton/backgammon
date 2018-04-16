@@ -2,7 +2,7 @@
 
 An OCaml implementation of command-line backgammon with an AI trained using reinforcement learning.
 
-**Play against the AI [here](https://www.jacobh.co.uk/backgammon).**
+**Play against the AI [here](https://www.jacobh.co.uk/backgammon)!**
 
 Backgammon was the first major board game to be successfully attacked with techniques that resemble modern reinforcement learning, by Gerald Tesauro in the early 1990s. A first-hand account of the development of his program, TD-Gammon, can be found [here][2]. A good second-hand summary, including an introduction to the TD(*&lambda;*) algorithm on which the program is based, can be found in [1]. Details of some later implementations can be found [here][3] and [here][4].
 
