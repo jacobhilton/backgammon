@@ -22,6 +22,10 @@ end
 module Game_config = struct
   type t =
     | Human
+    | Gnubg of
+        { prog : string
+        ; filename : string
+        }
     | Random
     | Pip_count_ratio of { look_ahead : int }
     | Td of
@@ -44,7 +48,8 @@ module Game_config = struct
   let unpack = function
     | Human ->
       let stdin = Lazy.force Reader.stdin in
-      [], `Game (Game.human ~history_position:0 ~stdin ())
+      [], `Game (Deferred.return (Game.human ~history_position:0 ~stdin ()))
+    | Gnubg { prog; filename } -> [], `Game (Game.gnubg ~prog ~filename)
     | Random -> [], `Equity (Equity.random)
     | Pip_count_ratio { look_ahead } ->
       [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead Game)
@@ -159,7 +164,7 @@ let create ~forwards ~backwards ~trainee_config ~instructions ~display_override 
       >>| fun (td_opt, replay_memory) ->
       td_opt, Some replay_memory
   end
-  >>| fun (trainee_td_opt, replay_memory_opt) ->
+  >>= fun (trainee_td_opt, replay_memory_opt) ->
   let trainee =
     Option.bind replay_memory_opt ~f:(fun replay_memory ->
       let td =
@@ -179,19 +184,24 @@ let create ~forwards ~backwards ~trainee_config ~instructions ~display_override 
           (Td.Setup.create { Equity.Setup.player; to_play; board} (Td.representation td), valuation));
       valuation)
   in
-  let game =
+  begin
     match game_how with
     | `Game game -> game
-    | `Equity equity -> Game.of_equity (make_trainer equity)
+    | `Equity equity -> Deferred.return (Game.of_equity (make_trainer equity))
     | `Vs (game_or_equity_forwards, game_or_equity_backwards) ->
       let game_of_game_or_equity = function
         | `Game game -> game
-        | `Equity equity -> Game.of_equity (make_trainer equity)
+        | `Equity equity -> Deferred.return (Game.of_equity (make_trainer equity))
       in
+      game_of_game_or_equity game_or_equity_forwards
+      >>= fun game_forwards ->
+      game_of_game_or_equity game_or_equity_backwards
+      >>| fun game_backwards ->
       Game.vs (Per_player.create (function
-        | Forwards -> game_of_game_or_equity game_or_equity_forwards
-        | Backwards -> game_of_game_or_equity game_or_equity_backwards))
-  in
+        | Forwards -> game_forwards
+        | Backwards -> game_backwards))
+  end
+  >>| fun game ->
   let display = Game_config.is_human forwards || Game_config.is_human backwards || display_override in
   let stdout_flushed =
     let stdout = Lazy.force Writer.stdout in

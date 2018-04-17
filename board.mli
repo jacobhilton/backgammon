@@ -1,3 +1,5 @@
+open Core
+
 type t [@@deriving compare,sexp]
 
 include Core.Comparable.S with type t := t
@@ -34,3 +36,7 @@ val to_ascii
   -> string
 
 val to_representation : t -> [ `Original | `Modified | `Expanded ] -> to_play:Player.t -> float list
+
+val to_snowie : t -> to_play:Player.t -> Roll.t option -> string
+
+val of_snowie : string -> (t * [ `To_play of Player.t ] * Roll.t option) Or_error.t
