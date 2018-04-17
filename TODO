@@ -1,3 +1,4 @@
+benchmark against GNU Backgammon
 add a convolutional layer?
 expanded representation - 5 nodes per point-player
 depth_experiment - try with hidden_layer_sizes 1000, 1000, 1000 (say) and relu activation
