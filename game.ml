@@ -178,34 +178,61 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
       printf "%s\n" (Error.to_string_hum err);
       human ~stdin () player board roll ~history
 
-let gnubg ~prog ~filename =
+let gnubg ~prog ~filename ~display =
   Process.create ~prog ~args:[] ()
   >>| function
   | Error err -> failwithf "Failed to run gnubg: %s." (Error.to_string_hum err) ()
   | Ok process ->
-  fun player board roll ~history:_ ->
-    Writer.save filename ~contents:(Board.to_snowie board ~to_play:player (Some roll))
-    >>= fun () ->
-    List.iter
-      [ sprintf "import snowietxt %s" filename
-      ; "play"
-      ; sprintf "export position snowietxt %s" filename
-      ; "help"
-      ]
-      ~f:(Writer.write_line (Process.stdin process));
-    Clock.after (sec 5.) (* CR jhilton: use Process.stdout *)
-    >>= fun () ->
-    Reader.file_contents filename
-    >>| fun new_board_snowie ->
-    match Board.of_snowie new_board_snowie with
-    | Error err -> failwithf "Failed to parse gnubg output: %s." (Error.to_string_hum err) ()
-    | Ok (new_board, `To_play to_play, _) ->
-      if Player.equal player to_play then failwith "Failed to receive gnugb output.";
-      let valid_boards = Move.all_legal_turn_outcomes roll player board in
-      if not (Set.exists valid_boards ~f:(Board.equal new_board)) then
-        failwith "Illegal move made by gnubg."
-      else
-        Ok (new_board, None)
+    Writer.write_line (Process.stdin process) "set automatic roll off";
+    fun player board roll ~history:_ ->
+      Writer.save filename ~contents:(Board.to_snowie board ~to_play:player (Some roll))
+      >>= fun () ->
+      List.iter
+        [ sprintf "import snowietxt %s" filename
+        ; "play"
+        ; sprintf "export position snowietxt %s" filename
+        ; "help help"
+        ]
+        ~f:(Writer.write_line (Process.stdin process));
+      Deferred.repeat_until_finished None (fun resignation_status ->
+        Reader.read_line (Process.stdout process)
+        >>= function
+        | `Ok line ->
+          begin
+            if display then printf "%s\n" line;
+            let new_resignation_status =
+              match resignation_status with
+              | Some outcome -> Some outcome
+              | None ->
+                let prefix = "offers to resign" in
+                if String.is_substring line ~substring:(sprintf "%s a single game" prefix) then
+                  Some Outcome.Game
+                else if String.is_substring line ~substring:(sprintf "%s a gammon" prefix) then
+                  Some Gammon
+                else if String.is_substring line ~substring:(sprintf "%s a backgammon" prefix) then
+                  Some Backgammon
+                else
+                  None
+            in
+            Deferred.return (
+              if String.is_prefix line ~prefix:"Usage: help" then
+                `Finished new_resignation_status else `Repeat new_resignation_status)
+          end
+        | `Eof -> failwith "Failed to keep gnubg running.")
+      >>= function
+      | Some outcome -> failwithf "implement how to resign%s" (Outcome.to_phrase outcome) ()
+      | None ->
+        Reader.file_contents filename
+        >>| fun new_board_snowie ->
+        match Board.of_snowie new_board_snowie with
+        | Error err -> failwithf "Failed to parse gnubg output: %s." (Error.to_string_hum err) ()
+        | Ok (new_board, `To_play to_play, _) ->
+          if Player.equal player to_play then failwith "Move not made by by gnugb.";
+          let valid_boards = Move.all_legal_turn_outcomes roll player board in
+          if not (Set.exists valid_boards ~f:(Board.equal new_board)) then
+            failwith "Illegal move made by gnubg."
+          else
+            Ok (new_board, None)
 
 let vs ts player = (Per_player.get ts player) player
 

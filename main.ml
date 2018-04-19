@@ -25,6 +25,7 @@ module Game_config = struct
     | Gnubg of
         { prog : string
         ; filename : string
+        ; display : bool
         }
     | Random
     | Pip_count_ratio of { look_ahead : int }
@@ -49,7 +50,7 @@ module Game_config = struct
     | Human ->
       let stdin = Lazy.force Reader.stdin in
       [], `Game (Deferred.return (Game.human ~history_position:0 ~stdin ()))
-    | Gnubg { prog; filename } -> [], `Game (Game.gnubg ~prog ~filename)
+    | Gnubg { prog; filename; display } -> [], `Game (Game.gnubg ~prog ~filename ~display)
     | Random -> [], `Equity (Equity.random)
     | Pip_count_ratio { look_ahead } ->
       [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead Game)

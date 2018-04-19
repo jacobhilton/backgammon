@@ -252,8 +252,9 @@ let to_representation t version ~to_play =
   representation Forwards @ (List.rev (representation Backwards))
   |> order to_play
 
-
-(* From import.c in the gnubg source code:
+(* The comment below is taken from import.c in the gnubg source code. The implementation differs from
+ * this specification slightly, however: the bar fields are the opposite way round, and the first one
+ * is negative.
  *
  * Snowie .txt files
  *
@@ -288,14 +289,14 @@ let to_snowie t ~to_play roll =
     str [1; 0; 0; 0; 0]
     @ List.map [Player.char to_play; Player.char (Player.flip to_play)] ~f:String.of_char
     @ str [0; 0; 0; 1; 0]
-    @ str [Per_player.get t.bar to_play]
+    @ str [Int.neg (Per_player.get t.bar (Player.flip to_play))]
     @ begin
       List.map t.points ~f:(fun point ->
         Int.(Point.count point to_play - Point.count point (Player.flip to_play)))
       |> order (Player.flip to_play)
       |> str
     end
-    @ str [Per_player.get t.bar (Player.flip to_play)]
+    @ str [Per_player.get t.bar to_play]
     @ str begin
       match roll with
       | Some (Roll.Double i) -> [i; i]
@@ -307,14 +308,15 @@ let to_snowie t ~to_play roll =
 
 let of_snowie s =
   Or_error.try_with (fun () ->
+    let raise_str s = Error.raise (Error.of_string s) in
     let fields = String.split s ~on:';' in
-    if Int.(List.length fields < 40) then failwith "not enough fields";
+    if Int.(List.length fields < 40) then raise_str "not enough fields";
     let to_play_field = List.nth_exn fields 5 in
     let to_play =
       match String.to_list to_play_field with
       | [c] when Char.equal c Player.(char Forwards) -> Player.Forwards
       | [c] when Char.equal c Player.(char Backwards) -> Player.Backwards
-      | _ -> failwithf "invalid player on roll %s" to_play_field ()
+      | _ -> raise_str (sprintf "invalid player on roll %s" to_play_field)
     in
     let board_fields, roll_fields =
       List.split_n fields 12
@@ -330,7 +332,7 @@ let of_snowie s =
       | [first_roll; second_roll] ->
         begin
           if Int.(first_roll < 1 || first_roll > 6 || second_roll < 1 || second_roll > 6) then
-            failwithf "invalid roll %i-%i" first_roll second_roll ();
+            raise_str (sprintf "invalid roll %i-%i" first_roll second_roll);
           if Int.equal first_roll second_roll then
             Some (Roll.Double first_roll)
           else if Int.(first_roll > second_roll) then
@@ -338,19 +340,15 @@ let of_snowie s =
           else
             Some (High_low (second_roll, first_roll))
         end
-      | _ -> failwith "unreachable"
+      | _ -> raise_str "unreachable"
     in
-    let bar_to_play_field, (points_fields, bar_not_to_play_field) =
+    let bar_not_to_play_field, (points_fields, bar_to_play_field) =
       List.split_n board_fields 1
-      |> Tuple2.map_fst ~f:List.hd_exn
-      |> Tuple2.map_snd ~f:(fun l -> List.split_n l 24)
-      |> Tuple2.map_snd ~f:(Tuple2.map_snd ~f:List.hd_exn)
+      |> Tuple2.map_fst ~f:(Fn.compose Int.abs List.hd_exn)
+      |> Tuple2.map_snd ~f:(fun l ->
+        List.split_n l 24
+        |> Tuple2.map_snd ~f:(Fn.compose Int.abs List.hd_exn))
     in
-    let check_bar_field i =
-      if Int.(i < 0) then failwithf "negative number of counters on the bar %i" i ()
-    in
-    check_bar_field bar_to_play_field;
-    check_bar_field bar_not_to_play_field;
     let bar =
       Per_player.create (fun player ->
         if Player.equal player to_play then bar_to_play_field else bar_not_to_play_field)
@@ -372,7 +370,8 @@ let of_snowie s =
             + List.fold points ~init:0 ~f:(fun total point -> total + Point.count point player))
         in
         if Int.(total_not_off > 15) then
-          failwithf "too many counters of player %c in play %i" (Player.char player) total_not_off ();
+          raise_str (
+            sprintf "too many counters of player %c in play %i" (Player.char player) total_not_off);
         Int.(15 - total_not_off))
     in
     { bar; off; points }, `To_play to_play, roll)
