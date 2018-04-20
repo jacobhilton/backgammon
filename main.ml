@@ -23,8 +23,9 @@ module Game_config = struct
   type t =
     | Human
     | Gnubg of
-        { prog : string
-        ; filename : string
+        { command : string
+        ; import_file : string
+        ; export_file : string
         ; display : bool
         }
     | Random
@@ -50,7 +51,8 @@ module Game_config = struct
     | Human ->
       let stdin = Lazy.force Reader.stdin in
       [], `Game (Deferred.return (Game.human ~history_position:0 ~stdin ()))
-    | Gnubg { prog; filename; display } -> [], `Game (Game.gnubg ~prog ~filename ~display)
+    | Gnubg { command; import_file; export_file; display } ->
+      [], `Game (Game.gnubg ~command ~import_file ~export_file ~display)
     | Random -> [], `Equity (Equity.random)
     | Pip_count_ratio { look_ahead } ->
       [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead Game)
