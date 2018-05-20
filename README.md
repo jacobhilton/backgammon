@@ -68,7 +68,7 @@ As expected, training using the pip count ratio bot very quickly produces someth
 
 Despite those remarks, the graph does not show the length of the early training games and the time saved as a result. Therefore the best approach may be to use the pip count ratio bot for a very small number of initial training games (a single game, say), to put the bot on the right track, before switching to self-play. Since the benefit appears to be modest, in our remaining experiments we choose to forgo the use of the pip count ratio bot entirely for the sake of simplicity. Nonetheless, the general idea could be useful in other reinforcement learning settings.
 
-### Benchmarking using GNU Backgammon
+### Benchmarking against GNU Backgammon
 
 We tested the self-play training method described in the previous section by pitting a bot that chooses moves using the neural network (with no look-ahead) against [GNU Backgammon](http://www.gnubg.org/), a strong open-source program. We used the same neural network architecture, with a single fully-connected hidden layer of 40 units and sigmoid activation, and the same board representation. 100 test games were played after every 10 training games.
 
