@@ -7,7 +7,7 @@ An OCaml implementation of command-line backgammon with a bot trained using rein
 Backgammon was the first major board game to be successfully attacked with techniques that resemble modern reinforcement learning, by Gerald Tesauro in the early 1990s. A first-hand account of the development of his program, TD-Gammon, can be found [here][2]. A good second-hand summary, including an introduction to the TD(*&lambda;*) algorithm on which the program is based, can be found in [1]. Details of some later (re-)implementations can be found [here][3] and [here][4].
 
 Our implementation uses a closely-related but distinct algorithm. In outline, the general form of our algorithm is as follows.
-- Set up a feedforward neural network that takes as input a representation of a board position from the perspective of a particular player, and is intended to output an estimate of that player's "equity", i.e. the probability of that player winning the game (one may additionally ask for the probabilities of winning or losing a gammon or a backgammon).
+- Set up a feedforward neural network that takes as input a representation of a board position from the perspective of a particular player, and is intended to output an estimate of that player's "equity", i.e. the probability of that player winning the game (one may additionally ask for the probabilities of more specific outcomes, i.e. winning or losing a gammon or a backgammon).
 - Construct an "amplified" equity estimator, which is allowed to be more expensive than the neural network but should also be more accurate. In the simplest case, the amplified estimator can use 1-ply look-ahead, i.e. consider every possible roll of the dice and calculate the expected equity, as estimated by the neural network itself, once the opponent has played their next move. The amplified estimator should correctly identify who has won (and whether by a gammon or a backgammon) once the game is over.
 - Generate a sequence of board positions (using every position evaluated by the amplified estimator during self-play, for example), evaluate each position using the amplified estimator, and use these as training examples for the neural network.
 
@@ -66,13 +66,22 @@ plt.show()
 
 As expected, training using the pip count ratio bot very quickly produces something with reasonable performance, but this performance plateaus at 50%, since naturally it cannot outperform the pip count ratio bot itself. The hybrid method clearly improves upon this, while training using self-play starts out much more slowly. However, the self-play method catches up with the hybrid method in under 1,500 training games. Interestingly, in this particular run, after the full 2,000 games, the bot produced using self-play was slightly better than the bot produced using the hybrid method, winning 52,024 games in a 100,000-game head-to-head. While this difference could be put down to noise in the training process, it certainly appears that any early advantage gained by using the hybrid method is at best modest after 2,000 training games. Our explanation for this is that, while the pip count ratio bot is able to make reasonable moves, its equity estimates are very poor, so the hybrid method has a lot of "unlearning" to do after it switches to self-play.
 
-Despite those remarks, the graph does not show the length of the early training games and the time saved as a result. Therefore the best approach may be to use the pip count ratio bot for a very small number of initial training games (a single game, say), to put the bot on the right track, before switching to self-play. Since the benefit appears to be modest, in our remaining experiments we choose to forgo the use of the pip count ratio bot entirely for the sake of simplicity.
+Despite those remarks, the graph does not show the length of the early training games and the time saved as a result. Therefore the best approach may be to use the pip count ratio bot for a very small number of initial training games (a single game, say), to put the bot on the right track, before switching to self-play. Since the benefit appears to be modest, in our remaining experiments we choose to forgo the use of the pip count ratio bot entirely for the sake of simplicity. Nonetheless, the general idea could be useful in other reinforcement learning settings.
 
-Finally, we note that our bot performs well after relatively few training games. Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. While we have unfortunately not yet implemented a way to test our bot against a shared benchmark, our self-play method peforms well and stops improving after a only few thousand games. However, this difference is somewhat of an illusion, since our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms more comparable.
+### Benchmarking using GNU Backgammon
+
+We tested the self-play training method described in the previous section by pitting a bot that chooses moves using the neural network (with no look-ahead) against [GNU Backgammon](http://www.gnubg.org/), a strong open-source program. We used the same neural network architecture, with a single fully-connected hidden layer of 40 units and sigmoid activation, and the same board representation. 100 test games were played after every 10 training games.
+
+Here are the results, again with moving averages displayed.
+
+_
+
+A win rate of around _% was achieved after around _ training games. We expect this win rate to improve with larger neural network architectures, since Tesauro [saw][2] significant improvement moving from 40 to 80 hidden units.
+
+It may appear that our bot requires relatively few training games: Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. However our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms somewhat comparable.
 
 ### Coming soon...
 
-- Benchmarking our algorithm against GNU Backgammon
 - An experiment between different neural network architectures using an expanded board representation: using 1 hidden layer of size 40, using 2 hidden layers of size 80, and using 5 hidden layers of size 400 and relu rather than sigmoid activation
 - An experiment between 1-ply look-ahead and some form of Monte Carlo tree search guided by the output of the neural network
 
