@@ -60,7 +60,7 @@ plt.rcParams.update({'font.size': 12})
 ax = df.plot(figsize=(8, 5), grid=True, title='Test games won against pip count ratio bot')
 ax.set_xlabel('Training games played')
 ax.set_ylabel('250 training game-wide moving average')
-ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0%}'.format(y))) 
+ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
 plt.show()
 ](handcrafted_experiment.png)
 
@@ -74,9 +74,28 @@ We tested the self-play training method described in the previous section by pit
 
 Here are the results, again with moving averages displayed.
 
-_
+![
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
+def faithful_rolling_mean(series, max_odd_window=25):
+    result = series.map(lambda _: np.nan)
+    for window in range(max_odd_window, -1, -2):
+        result = np.where(np.isnan(result), series.rolling(window, center=True).mean(), result)
+    return result[:- (max_odd_window - 1) // 2]
+series = pd.Series(faithful_rolling_mean(pd.Series([0, 1, 1, 0, 0, 2, 0, 1, 0, 0, 2, 1, 0, 0, 0, 0, 2, 0, 0, 1, 1, 2, 1, 1, 1, 1, 0, 2, 0, 2, 1, 1, 2, 1, 0, 2, 3, 4, 4, 1, 2, 2, 1, 3, 4, 2, 1, 2, 1, 2, 5, 8, 2, 2, 3, 8, 4, 3, 0, 5, 5, 3, 5, 7, 8, 7, 10, 6, 9, 9, 7, 10, 8, 5, 11, 10, 9, 8, 7, 13, 11, 14, 11, 13, 9, 15, 13, 16, 12, 18, 12, 17, 14, 17, 11, 17, 18, 22, 21, 21, 20, 23, 21, 26, 15, 25, 22, 23, 19, 28, 27, 22, 19, 33, 23, 22, 24, 27, 24, 24, 31, 27, 25, 23, 24, 32, 30, 34, 21, 34, 32, 27, 28, 29, 25, 39, 26, 26, 33, 28, 30, 32, 37, 30, 32, 29, 39, 19, 22, 33, 35, 23, 39, 41, 35, 35, 40, 31, 25, 30, 30, 30, 34, 33, 37, 34, 33, 31, 34, 35, 35, 39, 33, 31, 32, 30, 31, 36, 36, 30, 37, 26, 36, 28, 39, 32, 39, 39, 31, 38, 40, 29, 30, 30, 30, 25, 35, 30, 37, 30, 42, 35, 34, 38, 41, 32, 33, 26, 47, 35, 28, 40, 38, 34, 28, 27, 28, 35, 32, 30, 26, 29, 37, 38, 41, 37, 39, 32, 35, 39, 40, 32, 26, 36, 29, 35, 43, 40, 33, 41, 36, 42, 41, 42, 40, 39, 31, 32, 39, 35, 33, 32, 40, 34, 35, 35, 40, 24, 40, 32, 39, 36, 32, 36, 35, 29, 34, 32, 35, 44, 30, 35, 37, 29, 29, 31, 37, 36, 36, 26, 44, 46, 39, 28, 44, 30, 37, 37, 28, 33, 37, 34, 31, 40, 42, 36, 39, 36, 33, 28, 31, 37, 43, 41, 31, 40, 33, 46, 30, 38, 37, 28, 33, 33, 37, 30, 38, 42, 39, 40, 36, 41, 29, 38, 37, 37, 34, 35, 30, 43, 37, 33, 39, 37, 33, 32, 37, 26, 41, 39, 44, 29, 37, 28, 38, 33, 32, 46, 35, 38, 31, 46, 42, 38, 34, 31, 32, 37, 43, 38, 40, 34, 39, 38, 35, 30, 31, 33, 44, 30, 31, 36, 39, 26, 32, 32, 33, 37, 36, 36, 42, 45, 44, 27, 40, 34, 30, 36, 29, 36, 36, 37, 46, 34, 35, 22, 34, 37, 36, 33, 34, 37, 28, 42, 28, 37, 35, 32, 42, 31, 28, 36]) / 100))
+series.index = series.index * 10
+plt.rcParams.update({'font.size': 12})
+ax = series.plot(figsize=(8, 5), grid=True, title='Test games won against GNU Backgammon', color='C1')
+ax.set_xlabel('Training games played')
+ax.set_ylabel('250 training game-wide moving average')
+ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
+ax.legend().remove()
+plt.show()
+](benchmark_experiment.png)
 
-A win rate of around _% was achieved after around _ training games. We expect this win rate to improve with larger neural network architectures, since Tesauro [saw][2] significant improvement moving from 40 to 80 hidden units.
+A win rate of around 35% was achieved after around 2,000 training games. We expect this win rate to improve with larger neural network architectures, since Tesauro [saw][2] significant improvement moving from 40 to 80 hidden units.
 
 It may appear that our bot requires relatively few training games: Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. However our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms somewhat comparable.
 
