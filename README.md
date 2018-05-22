@@ -97,7 +97,7 @@ plt.show()
 
 A win rate of around 35% was achieved after around 2,000 training games. We expect this win rate to improve with larger neural network architectures, since Tesauro [saw][2] significant improvement moving from 40 to 80 hidden units.
 
-It may appear that our bot requires relatively few training games: Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. However our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms somewhat comparable.
+It may appear that our bot requires relatively few training games: Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. However, our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms somewhat comparable.
 
 ### Coming soon...
 
