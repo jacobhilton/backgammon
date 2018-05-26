@@ -44,13 +44,12 @@ else
         -train "(same (replay_memory_config ((capacity (50_000)) (play_to_load (${PLAY_TO_LOAD})))))" \
         -instructions "((games 10) (train (minibatch_size 128) (minibatches_number 500)) (save_ckpt ${CKPT_TO_SAVE}) (save_play ${PLAY_TO_SAVE}))" \
         -abandon-after "500"
-    fi
     elif [[ "${ACTION}" == "test" ]]; then
       echo "After ${PLAYED} games:"
       "${EXE}" \
         -X "(td (td_config ${TD_CONFIG}) (look_ahead 1))" \
         -O "(td (td_config ((hidden_layer_sizes (40)) (activation Sigmoid) (representation Modified) (ckpt_to_load (${SAVES}/small.10000.ckpt)))) (look_ahead 1))" \
-        -instructions "((Games 100))" \
+        -instructions "((Games 100))"
     fi
   done | tee -a "${SAVES}/${SIZE}.${ACTION}.log"
 fi
