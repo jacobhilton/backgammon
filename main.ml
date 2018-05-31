@@ -27,6 +27,7 @@ module Game_config = struct
         ; import_file : string
         ; export_file : string
         ; display : bool
+        ; timeout : Time.Span.t
         }
     | Random
     | Pip_count_ratio of { look_ahead : int }
@@ -51,8 +52,8 @@ module Game_config = struct
     | Human ->
       let stdin = Lazy.force Reader.stdin in
       [], `Game (Deferred.return (Game.human ~history_position:0 ~stdin ()))
-    | Gnubg { command; import_file; export_file; display } ->
-      [], `Game (Game.gnubg ~command ~import_file ~export_file ~display)
+    | Gnubg { command; import_file; export_file; display; timeout } ->
+      [], `Game (Game.gnubg ~command ~import_file ~export_file ~display ~timeout)
     | Random -> [], `Equity (Equity.random)
     | Pip_count_ratio { look_ahead } ->
       [], `Equity (Equity.minimax Equity.pip_count_ratio ~look_ahead Game)

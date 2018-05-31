@@ -178,7 +178,7 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
       printf "%s\n" (Error.to_string_hum err);
       human ~stdin () player board roll ~history
 
-let gnubg ~command ~import_file ~export_file ~display =
+let gnubg ~command ~import_file ~export_file ~display ~timeout =
   Process.create ~prog:command ~args:[] ()
   >>| function
   | Error err -> failwithf "Failed to run gnubg: %s." (Error.to_string_hum err) ()
@@ -200,15 +200,21 @@ let gnubg ~command ~import_file ~export_file ~display =
           ]
           ~f:(Writer.write_line (Process.stdin process));
         Deferred.repeat_until_finished () (fun () ->
-          Reader.read_line (Process.stdout process)
+          Deferred.any
+            [ (Reader.read_line (Process.stdout process) >>| fun read_result -> `In_time read_result)
+            ; (Clock.after timeout >>| fun () -> `Timeout)
+            ]
           >>= function
-          | `Ok line ->
+          | `In_time (`Ok line) ->
             begin
               if display then printf "%s\n" line;
               Deferred.return (
                 if String.is_prefix line ~prefix:"Usage: help" then `Finished () else `Repeat ())
             end
-          | `Eof -> failwith "Failed to keep gnubg running.")
+          | `In_time `Eof -> failwith "Failed to keep gnubg running."
+          | `Timeout ->
+            failwithf "Timeout reached after waiting for gnubg for %s."
+              (Time.Span.to_string_hum timeout) ())
         >>= fun () ->
         Reader.file_contents export_file
         >>| fun new_board_snowie ->

@@ -7,7 +7,13 @@ val of_equity : Equity.t -> t
 
 val human : ?history_position:int -> stdin:Reader.t -> unit -> t
 
-val gnubg : command:string -> import_file:string -> export_file:string -> display:bool -> t Deferred.t
+val gnubg
+  :  command:string
+  -> import_file:string
+  -> export_file:string
+  -> display:bool
+  -> timeout:Time.Span.t
+  -> t Deferred.t
 
 val vs : t Per_player.t -> t
 
