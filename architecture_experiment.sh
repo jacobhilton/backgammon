@@ -48,7 +48,7 @@ else
       echo "After ${PLAYED} games:"
       "${EXE}" \
         -X "(td (td_config ${TD_CONFIG}) (look_ahead 1))" \
-        -O "(td (td_config ((hidden_layer_sizes (40)) (activation Sigmoid) (representation Modified) (ckpt_to_load (${SAVES}/small.10000.ckpt)))) (look_ahead 1))" \
+        -O "(td (td_config ((hidden_layer_sizes (40)) (activation Sigmoid) (representation Modified) (ckpt_to_load (${SAVES}/small.5000.ckpt)))) (look_ahead 1))" \
         -instructions "((Games 100))"
     fi
   done | tee -a "${SAVES}/${SIZE}.${ACTION}.log"
