@@ -19,7 +19,7 @@ else
     echo "After ${PLAYED} games:"
     "${EXE}" \
       -X "(td (td_config ((hidden_layer_sizes (400 400 400 400 400)) (activation Relu) (representation Expanded) (ckpt_to_load (${SAVES}/large.${PLAYED}.ckpt)))) (look_ahead ${LOOKAHEAD}))" \
-      -O "(gnubg (display false) (command gnubg) (import_file /tmp/snowie.import.txt) (export_file /tmp/snowie.export.txt))" \
+      -O "(gnubg (command gnubg) (import_file /tmp/snowie.import.txt) (export_file /tmp/snowie.export.txt) (display false) (timeout 60s))" \
       -instructions "((Games 100))"
   done | tee -a "${SAVES}/benchmark.${LOOKAHEAD}.log"
 fi
