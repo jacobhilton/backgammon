@@ -114,7 +114,7 @@ ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
 plt.show()
 ](architecture_experiment.png)
 
-The larger architectures clearly performed better, though the training process was slower and less smooth.
+The larger architectures clearly performed better, though the training process for the largest architecture was less smooth.
 
 ### Benchmarking against GNU Backgammon
 
