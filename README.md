@@ -2,7 +2,11 @@
 
 An OCaml implementation of command-line backgammon with a bot trained using reinforcement learning.
 
-**Play against the bot [here](https://www.jacobh.co.uk/backgammon)!** The current version has a 42–43% win rate against GNU Backgammon using a single neural network to evaluate board positions with no look-ahead or other modifications.
+**Play against the bot [here](https://www.jacobh.co.uk/backgammon)!**
+
+The current version plays about as well as the top human players using a single neural network to evaluate board positions with no look-ahead or other modifications (achieving a 42–43% win rate against GNU Backgammon in single-game match play).
+
+## How it works
 
 Backgammon was the first major board game to be successfully attacked with techniques that resemble modern reinforcement learning, by Gerald Tesauro in the early 1990s. A first-hand account of the development of his program, TD-Gammon, can be found [here][2]. A good second-hand summary, including an introduction to the TD(*&lambda;*) algorithm on which the program is based, can be found in [1]. Details of some later (re-)implementations can be found [here][3] and [here][4].
 
@@ -19,7 +23,7 @@ One may view the 1-ply look-ahead version of this algorithm as being obtained fr
 This algorithm cannot be used in quite as general a setting as TD(*&lambda;*) itself: it requires us to have perfect knowledge of the environment, in order to consider every possible roll of the dice. But given that this knowledge is available in backgammon, the algorithm offers a number of advantages.
 - The averaging should smoothen the training process. Formally, it provides a stronger convergence property: with an idealised function approximator instead of the neural network (such as a lookup table), and assuming that every possible board position is reached infinitely many times, the algorithm converges to produce a completely accurate equity estimator *without needing to lower the learning rate* (whereas TD(*&lambda;*) only converges if the learning rate tends to zero).
 - It is straightforward to use a different amplification scheme in place of 1-ply look-ahead, such as Monte Carlo tree search or one of its variants. With such a modification the algorithm may be viewed as a simplified version of [AlphaZero](https://arxiv.org/abs/1712.01815).
-- The training of the neural network is decoupled from the process of generating training examples. This makes it possible to use the training examples more efficiently and to apply techniques such as [experience replay](https://arxiv.org/pdf/1312.5602v1.pdf) to further smoothen training. It also simplifies parallelisation of the algorithm.
+- The training of the neural network is decoupled from the process of generating training examples. This makes it possible to use the training examples more efficiently and to apply techniques such as [experience replay](https://arxiv.org/pdf/1312.5602.pdf) to further smoothen training. It also simplifies parallelisation of the algorithm.
 
 The implementation uses [tensorflow-ocaml](https://github.com/LaurentMazare/tensorflow-ocaml).
 
@@ -31,7 +35,7 @@ Tesauro [remarks][2] that with random play, backgammon games often last several 
 
 Since it is possible to change the amplified equity estimator in our algorithm, we therefore tried using a handcrafted bot as the amplified equity estimator, at least during the initial stages of training. Our handcrafted bot uses 1-ply look-ahead, but instead of using the neural network, it uses the ratio of the players' [pip counts](https://en.wikipedia.org/wiki/Backgammon) as a heuristic evaluation function. This ratio is a very poor estimate of the probability of winning, but with look-ahead it produces a bot that is able to implement simple strategies such as capturing and playing safe, preventing the game from lasting a very long time. We refer to this bot as the "pip count ratio bot".
 
-We compared three variants of the algorithm for 2,000 training games: using self-play (with 1-ply look-ahead), using only the pip count ratio bot, and using a hybrid method in which the pip count ratio bot was used for the first 500 training games before switching to self-play. This experiment used a very similar neural network architecture to Tesauro, with a single fully-connected hidden layer of 40 units and sigmoid activation. Only our board encoding is slightly different: in the encoding of the number *n* of a player's counters on a particular point, we replace the condition *n* = 3 by the condition *n* ≥ 3, in an attempt to take advantage of the fact that this indicates that the player will still have a made point after removing a counter; the unit specifying the number of counters on the bar is split in two, one specifying whether any counters are on the bar; and the unit indicating whose turn it is is removed, thereby removing a symmetry of the original representation. For training, we use the [Adam](https://arxiv.org/pdf/1412.6980.pdf) optimisation algorithm, and train on 500 minibatches of size 128 after every 10 games, using a [replay memory](https://arxiv.org/pdf/1312.5602v1.pdf) with a capacity of 50,000 board positions. For testing, after every 10 training games, 100 games were played between a bot that chooses moves using the neural network (with no look-ahead) and the pip count ratio bot.
+We compared three variants of the algorithm for 2,000 training games: using self-play (with 1-ply look-ahead), using only the pip count ratio bot, and using a hybrid method in which the pip count ratio bot was used for the first 500 training games before switching to self-play. This experiment used a very similar neural network architecture to Tesauro, with a single fully-connected hidden layer of 40 units and sigmoid activation. Only our board encoding is slightly different: in the encoding of the number *n* of a player's counters on a particular point, we replace the condition *n* = 3 by the condition *n* ≥ 3, in an attempt to take advantage of the fact that this indicates that the player will still have a made point after removing a counter; the unit specifying the number of counters on the bar is split in two, one specifying whether any counters are on the bar; and the unit indicating whose turn it is is removed, thereby removing a symmetry of the original representation. For training, we use the [Adam](https://arxiv.org/pdf/1412.6980.pdf) optimisation algorithm, and train on 500 minibatches of size 128 after every 10 games, using a [replay memory](https://arxiv.org/pdf/1312.5602.pdf) with a capacity of 50,000 board positions. For testing, after every 10 training games, 100 games were played between a bot that chooses moves using the neural network (with no look-ahead) and the pip count ratio bot.
 
 Here are the results, with moving averages displayed in order to cancel out some of the noise.
 
@@ -68,40 +72,19 @@ As expected, training using the pip count ratio bot very quickly produces someth
 
 Despite those remarks, the graph does not show the length of the early training games and the time saved as a result. Therefore the best approach may be to use the pip count ratio bot for a very small number of initial training games (a single game, say), to put the bot on the right track, before switching to self-play. Since the benefit appears to be modest, in our remaining experiments we choose to forgo the use of the pip count ratio bot entirely for the sake of simplicity. Nonetheless, the general idea could be useful in other reinforcement learning settings.
 
-### Benchmarking against GNU Backgammon
+### Increasing the size of the neural network
 
-We tested the self-play training method described in the previous section by pitting a bot that chooses moves using the neural network (with no look-ahead) against [GNU Backgammon](http://www.gnubg.org/), a strong open-source program. We used the same neural network architecture, with a single fully-connected hidden layer of 40 units and sigmoid activation, and the same board representation. 100 test games were played after every 10 training games.
+We studied the effect of increasing the size of the neural network on performance. As part of this we introduced an expanded board representation, with additional nodes specifying whether the number of counters on a point is at greater than or equal to 4, 5 and 6, and further additional nodes representing the number of counters on the bar and that have been borne off, for a total of 326 rather than 198 nodes.
+
+We tested three different neural network architectures:
+- using 1 hidden layer of size 40, sigmoid activation, and the same board representation as before;
+- using 2 hidden layers of size 80, sigmoid activation, and the expanded board representation;
+- and using 5 hidden layers of size 400, relu activation, and the expanded board representation.
+
+100 test games were played after every 10 training games between a bot that chooses moves using the neural network and a bot that chooses moves using a fully-trained neural network with the first architecture (both with no look-ahead).
 
 Here are the results, again with moving averages displayed.
 
-![
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
-def faithful_rolling_mean(series, max_odd_window=25):
-    result = series.map(lambda _: np.nan)
-    for window in range(max_odd_window, -1, -2):
-        result = np.where(np.isnan(result), series.rolling(window, center=True).mean(), result)
-    return result[:- (max_odd_window - 1) // 2]
-series = pd.Series(faithful_rolling_mean(pd.Series([0, 1, 1, 0, 0, 2, 0, 1, 0, 0, 2, 1, 0, 0, 0, 0, 2, 0, 0, 1, 1, 2, 1, 1, 1, 1, 0, 2, 0, 2, 1, 1, 2, 1, 0, 2, 3, 4, 4, 1, 2, 2, 1, 3, 4, 2, 1, 2, 1, 2, 5, 8, 2, 2, 3, 8, 4, 3, 0, 5, 5, 3, 5, 7, 8, 7, 10, 6, 9, 9, 7, 10, 8, 5, 11, 10, 9, 8, 7, 13, 11, 14, 11, 13, 9, 15, 13, 16, 12, 18, 12, 17, 14, 17, 11, 17, 18, 22, 21, 21, 20, 23, 21, 26, 15, 25, 22, 23, 19, 28, 27, 22, 19, 33, 23, 22, 24, 27, 24, 24, 31, 27, 25, 23, 24, 32, 30, 34, 21, 34, 32, 27, 28, 29, 25, 39, 26, 26, 33, 28, 30, 32, 37, 30, 32, 29, 39, 19, 22, 33, 35, 23, 39, 41, 35, 35, 40, 31, 25, 30, 30, 30, 34, 33, 37, 34, 33, 31, 34, 35, 35, 39, 33, 31, 32, 30, 31, 36, 36, 30, 37, 26, 36, 28, 39, 32, 39, 39, 31, 38, 40, 29, 30, 30, 30, 25, 35, 30, 37, 30, 42, 35, 34, 38, 41, 32, 33, 26, 47, 35, 28, 40, 38, 34, 28, 27, 28, 35, 32, 30, 26, 29, 37, 38, 41, 37, 39, 32, 35, 39, 40, 32, 26, 36, 29, 35, 43, 40, 33, 41, 36, 42, 41, 42, 40, 39, 31, 32, 39, 35, 33, 32, 40, 34, 35, 35, 40, 24, 40, 32, 39, 36, 32, 36, 35, 29, 34, 32, 35, 44, 30, 35, 37, 29, 29, 31, 37, 36, 36, 26, 44, 46, 39, 28, 44, 30, 37, 37, 28, 33, 37, 34, 31, 40, 42, 36, 39, 36, 33, 28, 31, 37, 43, 41, 31, 40, 33, 46, 30, 38, 37, 28, 33, 33, 37, 30, 38, 42, 39, 40, 36, 41, 29, 38, 37, 37, 34, 35, 30, 43, 37, 33, 39, 37, 33, 32, 37, 26, 41, 39, 44, 29, 37, 28, 38, 33, 32, 46, 35, 38, 31, 46, 42, 38, 34, 31, 32, 37, 43, 38, 40, 34, 39, 38, 35, 30, 31, 33, 44, 30, 31, 36, 39, 26, 32, 32, 33, 37, 36, 36, 42, 45, 44, 27, 40, 34, 30, 36, 29, 36, 36, 37, 46, 34, 35, 22, 34, 37, 36, 33, 34, 37, 28, 42, 28, 37, 35, 32, 42, 31, 28, 36]) / 100))
-series.index = series.index * 10
-plt.rcParams.update({'font.size': 12})
-ax = series.plot(figsize=(8, 5), grid=True, title='Test games won against GNU Backgammon', color='C1')
-ax.set_xlabel('Training games played')
-ax.set_ylabel('250 training game-wide moving average')
-ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
-ax.legend().remove()
-plt.show()
-](benchmark_experiment.png)
-
-A win rate of around 35% was achieved after around 2,000 training games. We expect this win rate to improve with larger neural network architectures, since Tesauro [saw][3] significant improvement moving from 40 to 80 hidden units.
-
-It may appear that our bot requires relatively few training games: Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. However, our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms somewhat comparable.
-
-### Coming soon...
-
-- An experiment between different neural network architectures using an expanded board representation: using 1 hidden layer of size 40, using 2 hidden layers of size 80, and using 5 hidden layers of size 400 and relu rather than sigmoid activation
 ![
 import numpy as np
 import pandas as pd
@@ -130,6 +113,43 @@ ax.set_ylabel('490 training game-wide moving average')
 ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
 plt.show()
 ](architecture_experiment.png)
+
+The larger architectures clearly performed better, though the training process was slower and less smooth.
+
+### Benchmarking against GNU Backgammon
+
+We tested the largest architecture described in the previous section by pitting a bot that chooses moves using the neural network (with no look-ahead) against [GNU Backgammon](http://www.gnubg.org/), a strong open-source program that uses three neural networks and an endgame database. 100 test games were played after every 10 training games.
+
+Here are the results, again with moving averages displayed.
+
+![
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
+def faithful_rolling_mean(series, max_odd_window=49):
+    result = series.map(lambda _: np.nan)
+    for window in range(max_odd_window, -1, -2):
+        result = np.where(np.isnan(result), series.rolling(window, center=True).mean(), result)
+    return result[:- (max_odd_window - 1) // 2]
+series = pd.Series(faithful_rolling_mean(pd.Series([0, 0, 0, 1, 1, 1, 1, 1, 4, 1, 5, 7, 12, 7, 7, 8, 12, 4, 4, 4, 6, 10, 9, 1, 7, 2, 6, 11, 3, 7, 5, 7, 12, 6, 5, 6, 7, 12, 6, 5, 8, 8, 8, 4, 8, 6, 10, 4, 5, 5, 4, 5, 3, 7, 4, 4, 3, 7, 3, 4, 3, 9, 3, 7, 7, 4, 3, 3, 7, 3, 7, 1, 8, 8, 5, 5, 6, 5, 8, 10, 10, 7, 5, 5, 9, 5, 8, 9, 8, 6, 7, 9, 9, 7, 11, 9, 9, 11, 10, 9, 11, 13, 11, 14, 17, 9, 14, 14, 14, 11, 10, 15, 11, 13, 15, 10, 13, 17, 15, 24, 16, 20, 17, 24, 17, 18, 18, 15, 18, 18, 23, 25, 26, 25, 25, 23, 20, 31, 18, 27, 20, 28, 28, 25, 29, 28, 26, 29, 31, 23, 33, 29, 30, 33, 38, 29, 35, 26, 32, 32, 36, 24, 37, 30, 28, 30, 29, 31, 34, 32, 33, 29, 36, 37, 35, 41, 36, 43, 29, 38, 40, 25, 31, 35, 34, 40, 41, 39, 34, 44, 34, 42, 40, 39, 33, 41, 39, 38, 41, 40, 29, 35, 38, 37, 41, 44, 31, 41, 34, 42, 45, 44, 40, 44, 39, 35, 40, 45, 43, 41, 40, 43, 33, 39, 41, 36, 41, 36, 44, 46, 46, 39, 43, 41, 44, 49, 40, 32, 37, 45, 47, 33, 46, 33, 40, 39, 37, 39, 40, 44, 51, 37, 40, 37, 36, 44, 46, 39, 44, 48, 31, 46, 41, 38, 35, 44, 41, 43, 37, 36, 46, 44, 42, 43, 42, 44, 41, 35, 43, 36, 44, 36, 49, 51, 34, 38, 41, 52, 38, 44, 38, 42, 43, 40, 40, 44, 43, 35, 42, 38, 32, 45, 37, 41, 43, 49, 35, 49, 51, 45, 46, 40, 40, 44, 39, 38, 34, 37, 41, 37, 47, 35, 37, 39, 38, 46, 41, 43, 38, 42, 46, 44, 42, 46, 47, 39, 38, 43, 41, 41, 41, 42, 37, 40, 47, 40, 45, 35, 46, 43, 40, 39, 51, 44, 57, 44, 43, 43, 47, 45, 45, 42, 47, 43, 48, 38, 44, 39, 48, 43, 45, 56, 38, 41, 47, 43, 38, 33, 31, 34, 44, 50, 38, 45, 44, 44, 34, 40, 43, 43, 44, 40, 49, 46, 37, 34, 43, 35, 36, 44, 39, 36, 47, 40, 43, 31, 42, 34, 47, 39, 44, 38, 45, 37, 41, 38, 29, 46, 38, 39, 44, 41, 36, 46, 43, 44, 44, 41, 54, 45, 46, 43, 44, 42, 45, 41, 43, 40, 37, 46, 39, 45, 43, 43, 48, 41, 37, 43, 40, 42, 43, 40, 46, 54, 43, 47, 50, 52, 52, 46, 47, 43, 40, 42, 38, 47, 41, 42, 38, 44, 45, 45, 36, 39, 46, 47, 45, 44, 41, 43, 43, 47, 50, 37, 43, 52, 46, 35, 46, 44, 40, 36, 46, 44, 41, 42, 46, 46, 51, 42, 42, 45, 45, 44, 50, 41, 48, 55, 37, 42, 41, 49, 43, 44, 42, 40, 42, 45, 34, 45, 43, 43, 48, 40]) / 100))
+series.index = series.index * 10
+plt.rcParams.update({'font.size': 12})
+ax = series.plot(figsize=(8, 5), grid=True, title='Test games won against GNU Backgammon')
+ax.set_xlabel('Training games played')
+ax.set_ylabel('490 training game-wide moving average')
+ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
+ax.legend().remove()
+plt.show()
+](benchmark_experiment.png)
+
+A win rate of around 41% was achieved after around 2,500 training games. With each game lasting around 57 moves on average, this corresponds to an "error rating" (thousandths of expected games given up per move) of around 1.6 above that of GNU Backgammon, which is about as good as the top human players.
+
+It may appear that our bot requires relatively few training games: Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. However, our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms somewhat comparable.
+
+Allowing the bot to look ahead 1 move improves the win rate against GNU Backgammon by around 2%: the number of games won by the bot in a 10,000-game head-to-head against GNU Backgammon increased from 4,255 to 4,469 with this change.
+
+### Coming soon...
 
 - An experiment between 1-ply look-ahead and some form of Monte Carlo tree search guided by the output of the neural network
 
