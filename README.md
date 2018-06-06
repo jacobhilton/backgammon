@@ -143,7 +143,7 @@ ax.legend().remove()
 plt.show()
 ](benchmark_experiment.png)
 
-A win rate of around 41% was achieved after around 2,500 training games. With each game lasting around 57 moves on average, this corresponds to an "error rating" (thousandths of expected games given up per move) of around 1.6 above that of GNU Backgammon, which is about as good, if not better than, the top human players.
+A win rate of around 41% was achieved after around 2,500 training games. With each game lasting around 57 moves on average, this corresponds to an "error rating" (thousandths of expected games given up per move made) of around 3.2 above that of GNU Backgammon, which is about as good as the top human players.
 
 It may appear that our bot requires relatively few training games: Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. However, our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms somewhat comparable.
 
