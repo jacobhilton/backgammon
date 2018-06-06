@@ -74,12 +74,12 @@ Despite those remarks, the graph does not show the length of the early training 
 
 ### Increasing the size of the neural network
 
-We studied the effect of increasing the size of the neural network on performance. As part of this we introduced an expanded board representation, with additional nodes specifying whether the number of counters on a point is at greater than or equal to 4, 5 and 6, and further additional nodes representing the number of counters on the bar and that have been borne off, for a total of 326 rather than 198 nodes.
+We studied the effect of increasing the size of the neural network on performance. As part of this we introduced an expanded board representation, with additional nodes specifying whether the number of counters of a player on a point is at greater than or equal to 4, 5 and 6, and further additional nodes representing the number of counters of a player on the bar and the number of counters that a player has borne off. This expanded representation has a total of 326 rather than 198 nodes.
 
 We tested three different neural network architectures:
-- using 1 hidden layer of size 40, sigmoid activation, and the same board representation as before;
-- using 2 hidden layers of size 80, sigmoid activation, and the expanded board representation;
-- and using 5 hidden layers of size 400, relu activation, and the expanded board representation.
+- with 1 hidden layer of size 40, sigmoid activation, and the same board representation as before;
+- with 2 hidden layers of size 80, sigmoid activation, and the expanded board representation;
+- and with 5 hidden layers of size 400, relu activation, and the expanded board representation.
 
 100 test games were played after every 10 training games between a bot that chooses moves using the neural network and a bot that chooses moves using a fully-trained neural network with the first architecture (both with no look-ahead).
 
@@ -143,11 +143,11 @@ ax.legend().remove()
 plt.show()
 ](benchmark_experiment.png)
 
-A win rate of around 41% was achieved after around 2,500 training games. With each game lasting around 57 moves on average, this corresponds to an "error rating" (thousandths of expected games given up per move) of around 1.6 above that of GNU Backgammon, which is about as good as the top human players.
+A win rate of around 41% was achieved after around 2,500 training games. With each game lasting around 57 moves on average, this corresponds to an "error rating" (thousandths of expected games given up per move) of around 1.6 above that of GNU Backgammon, which is about as good, if not better than, the top human players.
 
 It may appear that our bot requires relatively few training games: Tesauro [notes][2] that TD-Gammon achieves an intermediate level of play after 200,000 training games. However, our algorithm evaluates around a few hundred times as many positions in its 1-ply look-ahead as TD-Gammon does, making the performance of the two algorithms somewhat comparable.
 
-Allowing the bot to look ahead 1 move improves the win rate against GNU Backgammon by around 2%: the number of games won by the bot in a 10,000-game head-to-head against GNU Backgammon increased from 4,255 to 4,469 with this change.
+Allowing the bot to use 1-ply look-ahead during play improves the win rate against GNU Backgammon by around 2%: the number of games won by the bot in a 10,000-game head-to-head against GNU Backgammon increased from 4,255 to 4,469 with this change.
 
 ### Coming soon...
 
