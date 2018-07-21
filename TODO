@@ -1,7 +1,13 @@
-benchmark against GNU Backgammon
+generalise minimax to mcts: sample k moves without replacement (using gumbel-max trick?) with the distribution determined by a softmax of equities, and choose l die rolls
+do this using async calls to the neural network?
+do this with multiple different values of k (and l? maybe just use l = 1) and average them all with some weights
+could reduce k as depth increases
+consider how to tune the many different hyperparameters - online cross-validation? there is a bias-variance trade-off
+note this bias-variance trade-off in the write-up, and add to the point about the stronger convergence property that it is related to the fact that it is unbiased
+use clustering to select die rolls?
+probability of move has something to do with stability of likelihood of winning as well as the likelihood itself?
+impelement parallelisability to make training a much deeper net more realistic
 add a convolutional layer?
-expanded representation - 5 nodes per point-player
-depth_experiment - try with hidden_layer_sizes 1000, 1000, 1000 (say) and relu activation
 add an epsilon chance of playing randomly (and possiblye using an old version for smoothness) - do this some proportion of the time
 for gammons and backgammons, pass an Outcome.t and a Player.t to equities and a (payoff : Outcome.t -> Player.t -> float) to games
 give the network 5 output nodes (or possibly 3 if you want to ignore backgammons)
@@ -10,12 +16,7 @@ use the repeat variant now that the memory leak is fixed
 consider batching tensorflow calls in minimax
 consider just using 1-ply search and updating using the best move
 general doubling algorithm as a function of payoff and equity - use analytic solution for continuous games to begin with (possibly with a 1-ply lookahead)
-games: first to or number of
+(technically doubling state should be an input into the game equity function)
 doubling: http://www.bkgm.com/articles/ZadehKobliska/OnOptimalDoublingInBackgammon/index.html
-instead of minimax:
-- alpha-beta pruning / negascout / mcts
-- transposition table
-- increase depth while gradually reducing width - select best k moves / use clustering to select die
-  rolls
-- probability of move has something to do with stability of likelihood of winning as well as the
-  likelihood itself?
+games: first to or number of
+consider also alpha-beta pruning / negascout / mcts / transposition table
