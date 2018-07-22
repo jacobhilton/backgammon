@@ -4,6 +4,7 @@ do this with multiple different values of k (and l? maybe just use l = 1) and av
 could reduce k as depth increases
 consider how to tune the many different hyperparameters - online cross-validation? there is a bias-variance trade-off
 note this bias-variance trade-off in the write-up, and add to the point about the stronger convergence property that it is related to the fact that it is unbiased
+rethink regularisation parameter, especially if using a biased method (could incorporate into the online cross-validation)
 use clustering to select die rolls?
 probability of move has something to do with stability of likelihood of winning as well as the likelihood itself?
 impelement parallelisability to make training a much deeper net more realistic
