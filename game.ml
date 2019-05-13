@@ -154,7 +154,7 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
     end
   | `Help ->
     printf
-      "Enter the start and end positions, separated by a foward slash \
+      "Enter the start and end positions, separated by a forward slash \
        (or any non-numeric character), of each counter you want to move.\n\
        Each position should be number from 1 to 24, \"bar\" or \"off\".\n\
        Unlike in standard notation, you should enter each counter movement individually. \
