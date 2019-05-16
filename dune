@@ -1,0 +1,5 @@
+(executables
+ (names main)
+ (libraries core async tensorflow)
+ (preprocess
+  (pps ppx_let ppx_compare ppx_sexp_conv)))

@@ -4,7 +4,6 @@ open Tensorflow_core
 
 type t =
   { representation : [ `Original | `Modified | `Expanded ]
-  ; session : Session.t
   ; type_ : [ `float ] Node.Type.t
   ; input_placeholder : [ `float ] Ops.Placeholder.t
   ; vars : (string * [ `float ] Node.t) list
@@ -22,7 +21,6 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~activation ~representation (
     | `Expanded -> 326
   in
   let output_size = 1 in
-  let session = Session.create () in
   let type_ = Node.Type.Float in
   let input_placeholder = Ops.placeholder ~type_ [-1; input_size] in
   let layer_size_pairs =
@@ -73,7 +71,6 @@ let create ?(epsilon_init=0.1) ~hidden_layer_sizes ~activation ~representation (
     Optimizers.adam_minimizer ~learning_rate:(Ops.f_or_d ~shape:[] ~type_ 0.001) loss
   in
   { representation
-  ; session
   ; type_
   ; input_placeholder
   ; vars = List.rev vars
@@ -114,7 +111,6 @@ let eval t equity_setups =
   let valuations =
     Session.run
       ~inputs:[Session.Input.float t.input_placeholder (Tensor.of_float_array2 boards Float32)]
-      ~session:t.session
       (Session.Output.float t.model)
   in
   Array.map2_exn signs (Tensor.to_float_array2 valuations)
@@ -140,7 +136,6 @@ let train t replay_memory ~minibatch_size ~minibatches_number =
               (Tensor.of_float_array2 modified_valuations Float32)
           ]
         ~targets:t.optimizer
-        ~session:t.session
         (Session.Output.float (Ops.checkNumerics t.loss ~message:"Non-finite loss."))
     in
     ()
@@ -149,7 +144,6 @@ let train t replay_memory ~minibatch_size ~minibatches_number =
 let save t ~filename =
   let vars = List.map t.vars ~f:(Tuple2.map_snd ~f:(fun var -> Node.P var)) in
   Session.run
-    ~session:t.session
     ~targets:[Node.P (Ops.save ~filename vars)]
     Session.Output.empty
 
@@ -164,14 +158,11 @@ let load t ~filename =
       |> fun node -> Node.P node)
   in
   Session.run
-    ~session:t.session
     ~targets:load_and_assign_nodes
     Session.Output.empty
 
 let sexp_of_vars t =
   List.map t.vars ~f:(Tuple2.map_snd ~f:(fun var ->
-    Session.run
-      ~session:t.session
-      (Session.Output.float var)
+    Session.run (Session.Output.float var)
     |> Tensor.to_float_array2))
   |> [%sexp_of:(string * float array array) list]

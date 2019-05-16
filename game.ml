@@ -81,8 +81,7 @@ let rec human ?history_position:history_position_opt ~stdin () player board roll
           let sorted_distances l =
             List.sort (List.map l ~f:Move.capped_distance) ~compare:Int.compare
           in
-          List.equal (sorted_distances moves) (sorted_distances legal_turn_prefix)
-            ~equal:Int.equal)
+          List.equal Int.equal (sorted_distances moves) (sorted_distances legal_turn_prefix))
       then
         Ok moves
       else
